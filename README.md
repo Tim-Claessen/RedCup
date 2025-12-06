@@ -30,24 +30,61 @@ A React Native mobile application for Beer Pong analytics and tournament managem
 
 ## 🎯 Key Features (MVP)
 
-1. **Game Setup:** Support for 1v1 and 2v2 matches (Ad-hoc teams).
+### ✅ Implemented Features
 
-2. **The Input Interface:** A visual rack (10-cup or 6-cup) where users tap to log a "Make."
+1. **Game Setup:** 
+   - Support for 1v1 and 2v2 matches (Ad-hoc teams)
+   - Cup count selection (6 or 10 cups)
+   - Player name entry for each team
+   - Game type automatically configures player count
 
-3. **Tournament Mode:** Ability to organize a bracket and track progress.
+2. **The Input Interface:** 
+   - Visual beer pong table with clickable cup formations (pyramid layout)
+   - Real-time timer tracking game duration
+   - Cup sink recording with player attribution
+   - Shot type tracking: Regular, Bounce, and Grenade (2v2 only)
+   - Table rotation for perspective switching
+   - Pause/Resume game functionality
 
-4. **Stats Engine:**
+3. **Game Tracking:**
+   - Event sourcing pattern - every cup sink is logged with full game state
+   - Tracks timestamp, player, shot type, and cups remaining
+   - Complete game state snapshots for replay/analytics
+   - Visual feedback for sunk cups
+
+4. **User Interface:**
+   - Material Design 3 theme (React Native Paper)
+   - Dark theme optimized for low-light gaming environments
+   - Responsive table sizing based on device screen
+   - Intuitive controls and navigation
+
+### 🚧 Planned Features
+
+5. **Tournament Mode:** Ability to organize a bracket and track progress.
+
+6. **Stats Engine:**
    - *Efficiency:* How fast a player clears the rack.
    - *Clutch Factor:* Performance on the final cup or "Rebuttals/Redemptions."
    - *Cup Isolation:* Which specific cups a player hits most often.
 
-5. **User Profiles:** User profile creation to enable the above features.
+7. **User Profiles:** User profile creation to enable the above features.
+8. **Firebase Integration:** Match persistence, user authentication, cloud sync.
 
 ## 🏗️ Technical Architecture
 
 ### Data Strategy
 
-**Event Sourcing:** We log every "Made Shot" as a discrete timestamped event with a `cup_index` to allow for granular replay and analysis later.
+**Event Sourcing:** We log every "Made Shot" as a discrete timestamped event with complete game state to allow for granular replay and analysis later.
+
+**Current Implementation:** Game events are stored in-memory during gameplay. Each event includes:
+- Timestamp
+- Cup ID and position
+- Player handle(s)
+- Shot type (regular, bounce, grenade)
+- Cups remaining for both teams
+- Complete game state snapshot
+
+**Future:** Events will be persisted to Firestore for long-term analytics and replay.
 
 ### Project Structure
 

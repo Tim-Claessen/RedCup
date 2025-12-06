@@ -1,3 +1,12 @@
+/**
+ * App Root Component
+ * 
+ * Sets up the React Native app with:
+ * - React Navigation for screen navigation
+ * - React Native Paper theme provider
+ * - Main navigation stack (Home, QuickGameSetup, Game)
+ */
+
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
