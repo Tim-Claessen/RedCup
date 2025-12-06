@@ -1,30 +1,30 @@
 {
   "expo": {
-    "name": "Friendly Physio",
-    "slug": "friendlyphysio",
+    "name": "Red Cup",
+    "slug": "redcup",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/FF_logo_PurpleOrange.png",
-    "userInterfaceStyle": "light",
+    "icon": "./assets/images/RedCup_Logo.jpg",
+    "userInterfaceStyle": "dark",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/images/FF_logo_PurpleOrange.png",
+      "image": "./assets/images/RedCup_Logo.jpg",
       "resizeMode": "contain",
-      "backgroundColor": "#fffded"
+      "backgroundColor": "#000000"
     },
     "ios": {
       "supportsTablet": false
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/FF_logo_PurpleOrange.png",
-        "backgroundColor": "#ffffff"
+        "foregroundImage": "./assets/images/RedCup_Logo.jpg",
+        "backgroundColor": "#000000"
       },
       "edgeToEdgeEnabled": false,
       "predictiveBackGestureEnabled": false
     },
     "web": {
-      "favicon": "./assets/images/FF_logo_PurpleOrange.png"
+      "favicon": "./assets/images/RedCup_Logo.jpg"
     }
   }
 }
