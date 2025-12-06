@@ -4,11 +4,12 @@
     "slug": "redcup",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/RedCup_Logo.jpg",
+    "icon": "./assets/images/RedCup_Logo.png",
     "userInterfaceStyle": "dark",
-    "newArchEnabled": true,
+    "scheme": "redcup",
+    "newArchEnabled": false,
     "splash": {
-      "image": "./assets/images/RedCup_Logo.jpg",
+      "image": "./assets/images/RedCup_Logo.png",
       "resizeMode": "contain",
       "backgroundColor": "#000000"
     },
@@ -17,14 +18,14 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/RedCup_Logo.jpg",
+        "foregroundImage": "./assets/images/RedCup_Logo.png",
         "backgroundColor": "#000000"
       },
       "edgeToEdgeEnabled": false,
       "predictiveBackGestureEnabled": false
     },
     "web": {
-      "favicon": "./assets/images/RedCup_Logo.jpg"
+      "favicon": "./assets/images/RedCup_Logo.png"
     }
   }
 }

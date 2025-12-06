@@ -24,7 +24,6 @@ A React Native mobile application for Beer Pong analytics and tournament managem
 
 ## 📱 App Concept
 
-
 **Core Concept:** A digital scoreboard and tournament manager for Beer Pong that focuses on "Moneyball-style" analytics.
 
 **Key Constraint:** We prioritize speed of play—we ONLY track *made shots*, never misses.
@@ -52,7 +51,7 @@ A React Native mobile application for Beer Pong analytics and tournament managem
 
 ### Project Structure
 
-```
+```text
 RedCup/
 ├── src/
 │   ├── components/          # Reusable UI components
@@ -121,15 +120,70 @@ RedCup/
 
 ## 📊 Data Model
 
-### Event Structure
+The data model follows an **Event Sourcing** pattern, storing discrete timestamped events for granular replay and analysis. The schema is designed to support flexible team configurations (1v1, 2v2, ad-hoc teams) while maintaining data integrity.
 
-Each "Made Shot" event contains:
-- `timestamp`: When the shot was made
-- `cup_index`: Which cup was hit (0-9 for 10-cup, 0-5 for 6-cup)
-- `player_id`: Who made the shot
-- `game_id`: Which game this shot belongs to
-- `match_id`: Which match this shot belongs to
-- `tournament_id`: (Optional) Which tournament this shot belongs to
+### Core Tables
+
+#### 1. Users (The Constant)
+
+Standard user profile information.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `user_id` | String (PK) | Unique user identifier |
+| `handle` | String | Display name (e.g., "BeerBaron") |
+
+#### 2. Matches (The Container)
+
+Holds the state of each game/match.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `match_id` | String (PK) | Unique match identifier |
+| `tournament_id` | String (FK, Nullable) | Links to tournament (null for ad-hoc games) |
+| `rules_config` | JSON | Stores cup count (6 or 10) and game rules |
+| `started_at` | Timestamp | Match start time |
+| `ended_at` | Timestamp | Match end time (crucial for calculating speed/efficiency) |
+| `winning_side` | Enum | `'Home'` or `'Away'` (or `0` or `1`) |
+
+#### 3. Match_Participants (The "Partner" Logic)
+
+Junction table that solves team composition. Instead of a Team ID, users are grouped by `match_id` and `side`. Everyone on Side 0 are partners; everyone on Side 1 are opponents.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `match_id` | String (FK) | References the match |
+| `user_id` | String (FK) | References the user |
+| `side` | Integer | `0` or `1` - Team assignment |
+| `is_captain` | Boolean | Optional: Who finalized the score |
+
+#### 4. Made_Shots (The Event Stream)
+
+Since we only track makes, this table is "sparse" (low volume, high value). This is the core event stream that enables all analytics.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `shot_id` | String (PK) | Unique shot identifier |
+| `match_id` | String (FK) | References the match |
+| `user_id` | String (FK) | Who threw the shot |
+| `cup_index` | Integer | See "Cup Mapping" below |
+| `timestamp` | Timestamp | When the shot was made (allows runs/hot streaks analysis) |
+| `is_redemption` | Boolean | Was this a clutch save/redemption? |
+
+### Technical Detail: Cup Mapping
+
+To make the data useful for analytics later (heatmaps, cup isolation stats), we use a standard coordinate system for cups.
+
+**Important:** Do not store descriptive positions like "Front Left". Store an **Index ID**.
+
+- **10-Cup Rack:** Pyramid indices `0` through `9`
+- **6-Cup Rack:** Pyramid indices `0` through `5`
+
+This standardized indexing enables:
+
+- Heatmap visualizations
+- Cup isolation analytics (which cups a player hits most often)
+- Consistent data structure regardless of rack configuration
 
 ## 🔮 Future Roadmap
 

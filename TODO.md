@@ -1,4 +1,4 @@
-# Friendly Physio - Development TODO
+# Red Cup - Development TODO
 
 ## ✅ MVP Stack (Current)
 
@@ -78,12 +78,3 @@
   - Google Play Store
 - [ ] Configure app signing certificates
 - [ ] Set up CI/CD pipeline for automated builds
-
----
-
-## 📝 Notes
-
-- All MVP requirements are complete and the app is functional
-- Future state items can be implemented incrementally based on priorities
-- Consider implementing local storage and notifications first for offline functionality
-- Firebase integration can be done as a cohesive unit (Auth + Firestore + Analytics + Performance)
