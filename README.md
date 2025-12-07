@@ -26,19 +26,21 @@ A React Native mobile application for Beer Pong analytics and tournament managem
 
 **Core Concept:** A digital scoreboard and tournament manager for Beer Pong that focuses on "Moneyball-style" analytics.
 
-**Key Constraint:** We prioritize speed of play—we ONLY track *made shots*, never misses.
+**Key Constraint:** We prioritize speed of play—we ONLY track _made shots_, never misses.
 
 ## 🎯 Key Features (MVP)
 
 ### ✅ Implemented Features
 
-1. **Game Setup:** 
+1. **Game Setup:**
+
    - Support for 1v1 and 2v2 matches (Ad-hoc teams)
    - Cup count selection (6 or 10 cups)
    - Player name entry for each team
    - Game type automatically configures player count
 
-2. **The Input Interface:** 
+2. **The Input Interface:**
+
    - Visual beer pong table with clickable cup formations (pyramid layout)
    - Real-time timer tracking game duration
    - Cup sink recording with player attribution
@@ -47,6 +49,7 @@ A React Native mobile application for Beer Pong analytics and tournament managem
    - Pause/Resume game functionality
 
 3. **Game Tracking:**
+
    - Event sourcing pattern - every cup sink is logged with full game state
    - Tracks timestamp, player, shot type, and cups remaining
    - Complete game state snapshots for replay/analytics
@@ -63,9 +66,10 @@ A React Native mobile application for Beer Pong analytics and tournament managem
 5. **Tournament Mode:** Ability to organize a bracket and track progress.
 
 6. **Stats Engine:**
-   - *Efficiency:* How fast a player clears the rack.
-   - *Clutch Factor:* Performance on the final cup or "Rebuttals/Redemptions."
-   - *Cup Isolation:* Which specific cups a player hits most often.
+
+   - _Efficiency:_ How fast a player clears the rack.
+   - _Clutch Factor:_ Performance on the final cup or "Rebuttals/Redemptions."
+   - _Cup Isolation:_ Which specific cups a player hits most often.
 
 7. **User Profiles:** User profile creation to enable the above features.
 8. **Firebase Integration:** Match persistence, user authentication, cloud sync.
@@ -77,6 +81,7 @@ A React Native mobile application for Beer Pong analytics and tournament managem
 **Event Sourcing:** We log every "Made Shot" as a discrete timestamped event with complete game state to allow for granular replay and analysis later.
 
 **Current Implementation:** Game events are stored in-memory during gameplay. Each event includes:
+
 - Timestamp
 - Cup ID and position
 - Player handle(s)
@@ -129,14 +134,7 @@ RedCup/
    npm install
    ```
 
-3. **Configure Firebase**
-
-   - Set up Firebase project
-   - Add Firebase configuration files
-   - Configure Firestore database
-   - Set up Firebase Authentication
-
-4. **Start the development server**
+3. **Start the development server**
 
    ```bash
    npm start
@@ -150,14 +148,14 @@ RedCup/
    npm run web      # For web (limited functionality)
    ```
 
-5. **Run on your device**
+4. **Run on your device**
 
    - Scan the QR code with Expo Go app (iOS/Android)
    - Or press `a` for Android emulator, `i` for iOS simulator
 
 ## 📊 Data Model
 
-The data model follows an **Event Sourcing** pattern, storing discrete timestamped events for granular replay and analysis. The schema is designed to support flexible team configurations (1v1, 2v2, ad-hoc teams) while maintaining data integrity.
+The data model follows an **Event Sourcing** pattern, storing discrete timestamped events for granular replay and analysis.
 
 ### Core Tables
 
@@ -165,62 +163,54 @@ The data model follows an **Event Sourcing** pattern, storing discrete timestamp
 
 Standard user profile information.
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `user_id` | String (PK) | Unique user identifier |
-| `handle` | String | Display name (e.g., "BeerBaron") |
+| Field     | Type        | Description                      |
+| --------- | ----------- | -------------------------------- |
+| `user_id` | String (PK) | Unique user identifier           |
+| `handle`  | String      | Display name (e.g., "BeerBaron") |
 
 #### 2. Matches (The Container)
 
 Holds the state of each game/match.
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `match_id` | String (PK) | Unique match identifier |
-| `tournament_id` | String (FK, Nullable) | Links to tournament (null for ad-hoc games) |
-| `rules_config` | JSON | Stores cup count (6 or 10) and game rules |
-| `started_at` | Timestamp | Match start time |
-| `ended_at` | Timestamp | Match end time (crucial for calculating speed/efficiency) |
-| `winning_side` | Enum | `'Home'` or `'Away'` (or `0` or `1`) |
+| Field           | Type                  | Description                                               |
+| --------------- | --------------------- | --------------------------------------------------------- |
+| `match_id`      | String (PK)           | Unique match identifier                                   |
+| `tournament_id` | String (FK, Nullable) | Links to tournament (null for ad-hoc games)               |
+| `rules_config`  | JSON                  | Stores cup count (6 or 10) and game rules                 |
+| `started_at`    | Timestamp             | Match start time                                          |
+| `ended_at`      | Timestamp             | Match end time (crucial for calculating speed/efficiency) |
+| `winning_side`  | Enum                  | `'Home'` or `'Away'` (or `0` or `1`)                      |
 
 #### 3. Match_Participants (The "Partner" Logic)
 
 Junction table that solves team composition. Instead of a Team ID, users are grouped by `match_id` and `side`. Everyone on Side 0 are partners; everyone on Side 1 are opponents.
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `match_id` | String (FK) | References the match |
-| `user_id` | String (FK) | References the user |
-| `side` | Integer | `0` or `1` - Team assignment |
-| `is_captain` | Boolean | Optional: Who finalized the score |
+| Field        | Type        | Description                       |
+| ------------ | ----------- | --------------------------------- |
+| `match_id`   | String (FK) | References the match              |
+| `user_id`    | String (FK) | References the user               |
+| `side`       | Integer     | `0` or `1` - Team assignment      |
+| `is_captain` | Boolean     | Optional: Who finalized the score |
 
 #### 4. Made_Shots (The Event Stream)
 
 Since we only track makes, this table is "sparse" (low volume, high value). This is the core event stream that enables all analytics.
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `shot_id` | String (PK) | Unique shot identifier |
-| `match_id` | String (FK) | References the match |
-| `user_id` | String (FK) | Who threw the shot |
-| `cup_index` | Integer | See "Cup Mapping" below |
-| `timestamp` | Timestamp | When the shot was made (allows runs/hot streaks analysis) |
-| `is_redemption` | Boolean | Was this a clutch save/redemption? |
+| Field           | Type        | Description                                               |
+| --------------- | ----------- | --------------------------------------------------------- |
+| `shot_id`       | String (PK) | Unique shot identifier                                    |
+| `match_id`      | String (FK) | References the match                                      |
+| `user_id`       | String (FK) | Who threw the shot                                        |
+| `cup_index`     | Integer     | See "Cup Mapping" below                                   |
+| `timestamp`     | Timestamp   | When the shot was made (allows runs/hot streaks analysis) |
+| `is_redemption` | Boolean     | Was this a clutch save/redemption?                        |
 
 ### Technical Detail: Cup Mapping
 
 To make the data useful for analytics later (heatmaps, cup isolation stats), we use a standard coordinate system for cups.
 
-**Important:** Do not store descriptive positions like "Front Left". Store an **Index ID**.
-
 - **10-Cup Rack:** Pyramid indices `0` through `9`
 - **6-Cup Rack:** Pyramid indices `0` through `5`
-
-This standardized indexing enables:
-
-- Heatmap visualizations
-- Cup isolation analytics (which cups a player hits most often)
-- Consistent data structure regardless of rack configuration
 
 ## 🔮 Future Roadmap
 

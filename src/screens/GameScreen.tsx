@@ -19,6 +19,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
 import { Text, Button, useTheme, Dialog, Portal, SegmentedButtons, Card } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { v4 as uuidv4 } from 'uuid';
 import { DesignSystem } from '../theme';
 import { GameScreenNavigationProp } from '../types/navigation';
 import { RouteProp } from '@react-navigation/native';
@@ -45,13 +46,16 @@ interface Cup {
 /**
  * Game event for analytics and replay
  * Stores complete game state snapshot at the time of each cup sink
+ * Simple model: undone events are marked with isUndone flag for easy filtering
  */
 interface GameEvent {
-  timestamp: number;
+  eventId: string; // Unique event identifier (UUID v4) - prevents collisions
+  timestamp: number; // Timestamp for ordering/chronological analysis
   cupId: number;
   playerHandle: string;
   isBounce: boolean;
   isGrenade: boolean;
+  isUndone: boolean; // True if this event was undone - simple filter for analytics
   team1CupsRemaining: number;
   team2CupsRemaining: number;
   gameState: {
@@ -107,9 +111,11 @@ const GameScreen: React.FC<GameScreenProps> = ({ navigation, route }) => {
   const theme = useTheme();
   const { cupCount, team1Players, team2Players, gameType } = route.params;
   
+  // Invert cup IDs: first cup (position 0) gets highest ID (cupCount - 1)
+  // This makes the top cup in the pyramid have the highest number
   const [team1Cups, setTeam1Cups] = useState<Cup[]>(() =>
     getCupPositions(cupCount).map((pos, idx) => ({
-      id: idx,
+      id: cupCount - 1 - idx, // Inverted: 0 becomes (cupCount-1), last becomes 0
       sunk: false,
       position: pos,
     }))
@@ -117,7 +123,7 @@ const GameScreen: React.FC<GameScreenProps> = ({ navigation, route }) => {
   
   const [team2Cups, setTeam2Cups] = useState<Cup[]>(() =>
     getCupPositions(cupCount).map((pos, idx) => ({
-      id: idx,
+      id: cupCount - 1 - idx, // Inverted: 0 becomes (cupCount-1), last becomes 0
       sunk: false,
       position: pos,
     }))
@@ -238,12 +244,15 @@ const GameScreen: React.FC<GameScreenProps> = ({ navigation, route }) => {
     setTeam2Cups(newTeam2Cups);
 
     // Record game event for each player in grenade
-    const events: GameEvent[] = playersToRecord.map(player => ({
-      timestamp: Date.now(),
+    const timestamp = Date.now();
+    const events: GameEvent[] = playersToRecord.map((player) => ({
+      eventId: uuidv4(), // Standard UUID v4 for collision prevention
+      timestamp, // Timestamp stored separately for ordering logic
       cupId: selectedCup.cupId,
       playerHandle: player,
       isBounce,
       isGrenade,
+      isUndone: false, // Initially not undone
       team1CupsRemaining: newTeam1Cups.filter(c => !c.sunk).length,
       team2CupsRemaining: newTeam2Cups.filter(c => !c.sunk).length,
       gameState: {
@@ -265,8 +274,107 @@ const GameScreen: React.FC<GameScreenProps> = ({ navigation, route }) => {
    * Rotates the table view by swapping team positions
    * Team ownership of cups remains unchanged, only visual perspective changes
    */
+  /**
+   * Rotates the table view by swapping team positions
+   * Team ownership of cups remains unchanged, only visual perspective changes
+   */
   const handleRotateTable = () => {
     setTeam1Side((prev) => (prev === 'bottom' ? 'top' : 'bottom'));
+  };
+
+  /**
+   * Gets the most recent sunk cup for undo functionality
+   * Checks current cup state to find the most recently sunk cup
+   * Returns the corresponding sink event(s) that need to be undone
+   */
+  const getLastSinkEvent = (): { side: 'team1' | 'team2'; cupId: number; eventIds: string[] } | null => {
+    // Find all currently sunk cups with their sink timestamps
+    const sunkCups: Array<{ side: 'team1' | 'team2'; cupId: number; sunkAt: number }> = [];
+    
+    team1Cups.forEach(cup => {
+      if (cup.sunk && cup.sunkAt) {
+        sunkCups.push({ side: 'team1', cupId: cup.id, sunkAt: cup.sunkAt });
+      }
+    });
+    
+    team2Cups.forEach(cup => {
+      if (cup.sunk && cup.sunkAt) {
+        sunkCups.push({ side: 'team2', cupId: cup.id, sunkAt: cup.sunkAt });
+      }
+    });
+
+    if (sunkCups.length === 0) return null;
+
+    // Get the most recently sunk cup
+    const lastSunkCup = sunkCups.sort((a, b) => b.sunkAt - a.sunkAt)[0];
+
+    // Find the sink event(s) for this cup that haven't been undone
+    // Handles grenades with multiple events per cup sink
+    const sinkEvents = gameEvents
+      .filter(e => !e.isUndone && 
+                   e.cupId === lastSunkCup.cupId &&
+                   Math.abs(e.timestamp - lastSunkCup.sunkAt) < 1000) // Within 1 second
+      .map(e => e.eventId);
+
+    if (sinkEvents.length === 0) return null;
+
+    return {
+      side: lastSunkCup.side,
+      cupId: lastSunkCup.cupId,
+      eventIds: sinkEvents,
+    };
+  };
+
+  /**
+   * Undoes the most recent cup sink
+   * Marks the original event(s) as undone and restores cup state
+   * Simple model: just mark isUndone=true for easy analytics filtering
+   */
+  const handleUndo = () => {
+    const lastSink = getLastSinkEvent();
+    if (!lastSink) return; // Nothing to undo
+
+    const cups = lastSink.side === 'team1' ? team1Cups : team2Cups;
+    const cup = cups.find(c => c.id === lastSink.cupId);
+    
+    if (!cup || !cup.sunk) return; // Cup not sunk, can't undo
+
+    // Restore cup state
+    const updateCups = (cups: Cup[]) =>
+      cups.map((c) =>
+        c.id === lastSink.cupId
+          ? {
+              ...c,
+              sunk: false,
+              sunkAt: undefined,
+              sunkBy: undefined,
+              isBounce: undefined,
+              isGrenade: undefined,
+            }
+          : c
+      );
+
+    let newTeam1Cups = team1Cups;
+    let newTeam2Cups = team2Cups;
+
+    if (lastSink.side === 'team1') {
+      newTeam1Cups = updateCups(team1Cups);
+    } else {
+      newTeam2Cups = updateCups(team2Cups);
+    }
+
+    setTeam1Cups(newTeam1Cups);
+    setTeam2Cups(newTeam2Cups);
+
+    // Mark the original event(s) as undone
+    // This makes analytics trivial: just filter where isUndone = false
+    setGameEvents((prev) =>
+      prev.map((event) =>
+        lastSink.eventIds.includes(event.eventId)
+          ? { ...event, isUndone: true }
+          : event
+      )
+    );
   };
 
   /**
@@ -288,10 +396,20 @@ const GameScreen: React.FC<GameScreenProps> = ({ navigation, route }) => {
   /**
    * Renders a single row of cups in the pyramid formation
    * Cups are clickable and show visual feedback when sunk
+   * Sorts cups by ID to display in correct numerical order
    */
-  const renderCupRow = (cups: Cup[], row: number, side: 'team1' | 'team2') => {
-    const rowCups = cups.filter(c => c.position.row === row);
+  const renderCupRow = (cups: Cup[], row: number, side: 'team1' | 'team2', reverse: boolean = false) => {
+    let rowCups = cups.filter(c => c.position.row === row);
     if (rowCups.length === 0) return null;
+
+    // Sort by cup ID (descending for top, ascending for bottom when reversed)
+    rowCups = [...rowCups].sort((a, b) => {
+      if (reverse) {
+        return a.id - b.id; // Ascending for bottom (0, 1, 2...)
+      } else {
+        return b.id - a.id; // Descending for top (9, 8, 7...)
+      }
+    });
 
     return (
       <View key={row} style={styles.cupRow}>
@@ -328,12 +446,19 @@ const GameScreen: React.FC<GameScreenProps> = ({ navigation, route }) => {
   /**
    * Renders the complete pyramid formation of cups for a team
    * Determines number of rows and renders each row
+   * Bottom team renders reversed so pyramids face each other with correct numbering
    */
-  const renderCups = (cups: Cup[], side: 'team1' | 'team2') => {
+  const renderCups = (cups: Cup[], side: 'team1' | 'team2', isBottomSide: boolean) => {
     const maxRow = Math.max(...cups.map(c => c.position.row));
+    // Bottom side: reverse row order so base is at bottom, apex at top (pointing up)
+    // Top side: normal order so base is at top, apex at bottom (pointing down)
+    const rowOrder = isBottomSide
+      ? Array.from({ length: maxRow + 1 }, (_, i) => maxRow - i) // Reverse for bottom
+      : Array.from({ length: maxRow + 1 }, (_, i) => i); // Normal for top
+      
     return (
       <View style={styles.cupFormation}>
-        {Array.from({ length: maxRow + 1 }, (_, row) => renderCupRow(cups, row, side))}
+        {rowOrder.map((row) => renderCupRow(cups, row, side, isBottomSide))}
       </View>
     );
   };
@@ -390,12 +515,12 @@ const GameScreen: React.FC<GameScreenProps> = ({ navigation, route }) => {
             },
           ]}
         >
-          {/* Top Side - Rotates based on team1Side */}
+          {/* Top Side - Always normal orientation, rotates which team */}
           <View style={[styles.tableSide, styles.topSide]}>
             {team1Side === 'top' ? (
-              renderCups(team1Cups, 'team1')
+              renderCups(team1Cups, 'team1', false) // Top side always false
             ) : (
-              renderCups(team2Cups, 'team2')
+              renderCups(team2Cups, 'team2', false) // Top side always false
             )}
           </View>
 
@@ -407,12 +532,12 @@ const GameScreen: React.FC<GameScreenProps> = ({ navigation, route }) => {
             ]}
           />
 
-          {/* Bottom Side - Rotates based on team1Side */}
+          {/* Bottom Side - Always reversed orientation, rotates which team */}
           <View style={[styles.tableSide, styles.bottomSide]}>
             {team1Side === 'bottom' ? (
-              renderCups(team1Cups, 'team1')
+              renderCups(team1Cups, 'team1', true) // Bottom side always true
             ) : (
-              renderCups(team2Cups, 'team2')
+              renderCups(team2Cups, 'team2', true) // Bottom side always true
             )}
           </View>
         </View>
@@ -451,6 +576,16 @@ const GameScreen: React.FC<GameScreenProps> = ({ navigation, route }) => {
           icon={isPaused ? 'play' : 'pause'}
         >
           {isPaused ? 'Resume' : 'Pause'}
+        </Button>
+        <Button
+          mode="outlined"
+          onPress={handleUndo}
+          style={styles.actionButton}
+          textColor={theme.colors.onSurface}
+          icon="undo"
+          disabled={!getLastSinkEvent() || isPaused}
+        >
+          Undo
         </Button>
         <Button
           mode="outlined"

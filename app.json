@@ -25,7 +25,9 @@
       "predictiveBackGestureEnabled": false
     },
     "web": {
-      "favicon": "./assets/images/RedCup_Logo.png"
+      "favicon": "./assets/images/RedCup_Logo.png",
+      "bundler": "metro",
+      "output": "single"
     }
   }
 }
