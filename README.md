@@ -44,9 +44,11 @@ A React Native mobile application for Beer Pong analytics and tournament managem
    - Visual beer pong table with clickable cup formations (pyramid layout)
    - Real-time timer tracking game duration
    - Cup sink recording with player attribution
-   - Shot type tracking: Regular, Bounce, and Grenade (2v2 only)
-   - Table rotation for perspective switching
+   - Shot type tracking: Regular, Bounce (with second cup selection), and Grenade (2v2 only, coming soon)
+   - Table rotation for perspective switching (180° rotation)
    - Pause/Resume game functionality
+   - Undo functionality for correcting mistakes
+   - Bounce shot selection dialog with mirrored cup layout
 
 3. **Game Tracking:**
 
@@ -54,12 +56,24 @@ A React Native mobile application for Beer Pong analytics and tournament managem
    - Tracks timestamp, player, shot type, and cups remaining
    - Complete game state snapshots for replay/analytics
    - Visual feedback for sunk cups
+   - Bounce shots linked via `bounceGroupId` for coordinated undo
+   - UUID-based event IDs for collision prevention
+   - Soft-delete pattern (isUndone flag) for analytics
 
-4. **User Interface:**
+4. **Game Flow:**
+
+   - Victory condition detection (last cup or bounce on second-to-last cup)
+   - Redemption dialog with "Play on" or "Win" options
+   - Redemption restores last cup(s) without undoing events
+   - Victory overlay with player name and Home button
+   - Automatic player selection for 1v1 games
+
+5. **User Interface:**
    - Material Design 3 theme (React Native Paper)
    - Dark theme optimized for low-light gaming environments
    - Responsive table sizing based on device screen
    - Intuitive controls and navigation
+   - Web support (React Native Web) for browser testing
 
 ### 🚧 Planned Features
 
@@ -82,10 +96,13 @@ A React Native mobile application for Beer Pong analytics and tournament managem
 
 **Current Implementation:** Game events are stored in-memory during gameplay. Each event includes:
 
-- Timestamp
+- Event ID (UUID v4) for unique identification
+- Timestamp for chronological ordering
 - Cup ID and position
 - Player handle(s)
 - Shot type (regular, bounce, grenade)
+- Bounce group ID (links related bounce shot events)
+- IsUndone flag (soft-delete for analytics)
 - Cups remaining for both teams
 - Complete game state snapshot
 
@@ -98,15 +115,28 @@ RedCup/
 ├── src/
 │   ├── components/          # Reusable UI components
 │   ├── screens/             # Screen components
-│   ├── services/            # Firebase, analytics, etc.
+│   │   ├── HomeScreen.tsx
+│   │   ├── QuickGameSetupScreen.tsx
+│   │   └── GameScreen.tsx
+│   ├── services/            # Firebase, analytics, etc. (future)
 │   ├── types/               # TypeScript type definitions
-│   └── utils/               # Helper functions
+│   │   ├── navigation.ts
+│   │   └── game.ts          # Game-related types
+│   ├── utils/               # Helper functions
+│   │   ├── cupPositions.ts  # Cup position generation
+│   │   └── timeFormatter.ts # Time formatting utilities
+│   ├── constants/           # App constants
+│   │   └── gameConstants.ts # Game configuration constants
+│   └── theme/               # Theme and design system
+│       ├── colors.ts
+│       ├── DesignSystem.ts
+│       └── RedCupTheme.ts
 ├── assets/
-│   ├── images/              # App images and logos
-│   └── fonts/               # Custom fonts (if any)
+│   └── images/              # App images and logos
 ├── App.tsx                  # Root component
 ├── index.ts                 # Entry point
-└── package.json
+├── package.json
+└── CODE_REVIEW.md           # Code review and improvement recommendations
 ```
 
 ## 🛠️ Installation & Setup
@@ -145,7 +175,7 @@ RedCup/
    ```bash
    npm run android  # For Android
    npm run ios      # For iOS
-   npm run web      # For web (limited functionality)
+   npm run web      # For web browser (Chrome/Edge)
    ```
 
 4. **Run on your device**
@@ -226,9 +256,30 @@ To make the data useful for analytics later (heatmaps, cup isolation stats), we 
 
 - The app uses React Native Paper for Material Design 3 components
 - Navigation is handled by React Navigation (Native Stack)
-- All game events are stored using Event Sourcing pattern
+- All game events are stored using Event Sourcing pattern with soft-delete support
 - TypeScript ensures type safety throughout the codebase
-- Firebase provides backend services and real-time data sync
+- Web support enabled via React Native Web for browser testing
+- UUID v4 used for event IDs to prevent collisions
+- Bounce shots are linked via `bounceGroupId` for coordinated operations
+
+## 🔧 Code Quality
+
+- **Code Review**: See `CODE_REVIEW.md` for comprehensive code review and improvement recommendations
+- **Type Safety**: Strong TypeScript typing throughout
+- **Modularity**: Types, utilities, and constants extracted to separate files
+- **Documentation**: Inline comments and JSDoc for key functions
+
+## 🐛 Known Issues & Limitations
+
+- Grenade feature is temporarily disabled (UI present but non-functional)
+- Game events are stored in-memory only (not persisted to database yet)
+- No error boundaries or comprehensive error handling yet
+- No unit tests (testing infrastructure to be added)
+
+## 📚 Additional Documentation
+
+- `CODE_REVIEW.md` - Comprehensive code review with improvement recommendations
+- `TODO.md` - Development roadmap and planned features
 
 ## 🤝 Contributing
 
