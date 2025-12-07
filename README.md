@@ -90,24 +90,6 @@ A React Native mobile application for Beer Pong analytics and tournament managem
 
 ## 🏗️ Technical Architecture
 
-### Data Strategy
-
-**Event Sourcing:** We log every "Made Shot" as a discrete timestamped event with complete game state to allow for granular replay and analysis later.
-
-**Current Implementation:** Game events are stored in-memory during gameplay. Each event includes:
-
-- Event ID (UUID v4) for unique identification
-- Timestamp for chronological ordering
-- Cup ID and position
-- Player handle(s)
-- Shot type (regular, bounce, grenade)
-- Bounce group ID (links related bounce shot events)
-- IsUndone flag (soft-delete for analytics)
-- Cups remaining for both teams
-- Complete game state snapshot
-
-**Future:** Events will be persisted to Firestore for long-term analytics and replay.
-
 ### Project Structure
 
 ```text
@@ -189,6 +171,8 @@ The data model follows an **Event Sourcing** pattern, storing discrete timestamp
 
 ### Core Tables
 
+_**TODO: Review this section**_
+
 #### 1. Users (The Constant)
 
 Standard user profile information.
@@ -242,44 +226,12 @@ To make the data useful for analytics later (heatmaps, cup isolation stats), we 
 - **10-Cup Rack:** Pyramid indices `0` through `9`
 - **6-Cup Rack:** Pyramid indices `0` through `5`
 
-## 🔮 Future Roadmap
-
-- Real-time multiplayer game tracking
-- Advanced analytics dashboard
-- Player comparison tools
-- Historical game replay
-- Social features (friend lists, challenges)
-- Custom tournament formats
-- Export/import game data
-
-## 📝 Development Notes
-
-- The app uses React Native Paper for Material Design 3 components
-- Navigation is handled by React Navigation (Native Stack)
-- All game events are stored using Event Sourcing pattern with soft-delete support
-- TypeScript ensures type safety throughout the codebase
-- Web support enabled via React Native Web for browser testing
-- UUID v4 used for event IDs to prevent collisions
-- Bounce shots are linked via `bounceGroupId` for coordinated operations
-
-## 🔧 Code Quality
-
-- **Code Review**: See `CODE_REVIEW.md` for comprehensive code review and improvement recommendations
-- **Type Safety**: Strong TypeScript typing throughout
-- **Modularity**: Types, utilities, and constants extracted to separate files
-- **Documentation**: Inline comments and JSDoc for key functions
-
 ## 🐛 Known Issues & Limitations
 
 - Grenade feature is temporarily disabled (UI present but non-functional)
 - Game events are stored in-memory only (not persisted to database yet)
 - No error boundaries or comprehensive error handling yet
 - No unit tests (testing infrastructure to be added)
-
-## 📚 Additional Documentation
-
-- `CODE_REVIEW.md` - Comprehensive code review with improvement recommendations
-- `TODO.md` - Development roadmap and planned features
 
 ## 🤝 Contributing
 
