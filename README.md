@@ -86,7 +86,7 @@ A React Native mobile application for Beer Pong analytics and tournament managem
    - _Cup Isolation:_ Which specific cups a player hits most often.
 
 7. **User Profiles:** User profile creation to enable the above features.
-8. **Firebase Integration:** Match persistence, user authentication, cloud sync.
+8. **Firebase Integration:** ✅ Match persistence and event storage implemented. ⏳ User authentication pending.
 
 ## 🏗️ Technical Architecture
 
@@ -94,19 +94,19 @@ A React Native mobile application for Beer Pong analytics and tournament managem
 
 **Event Sourcing:** We log every "Made Shot" as a discrete timestamped event with complete game state to allow for granular replay and analysis later.
 
-**Current Implementation:** Game events are stored in-memory during gameplay. Each event includes:
+**Current Implementation:** Game events are stored both in-memory during gameplay and persisted to Firestore in real-time. Each event includes:
 
 - Event ID (UUID v4) for unique identification
 - Timestamp for chronological ordering
 - Cup ID and position
 - Player handle(s)
 - Shot type (regular, bounce, grenade)
-- Bounce group ID (links related bounce shot events)
+- Bounce group ID (links related bounce shot events, only for bounce shots)
 - IsUndone flag (soft-delete for analytics)
 - Cups remaining for both teams
 - Complete game state snapshot
 
-**Future:** Events will be persisted to Firestore for long-term analytics and replay.
+**Firestore Integration:** Events are automatically saved to Firestore as they occur. Matches are created when a game starts and completed when a game ends. The data model is optimized for analytics queries (see `FIREBASE_DATA_MODEL_ANALYSIS.md` for details).
 
 ### Project Structure
 
@@ -118,7 +118,22 @@ RedCup/
 │   │   ├── HomeScreen.tsx
 │   │   ├── QuickGameSetupScreen.tsx
 │   │   └── GameScreen.tsx
-│   ├── services/            # Firebase, analytics, etc. (future)
+│   ├── services/            # Backend services
+│   │   ├── firebase.ts      # Firebase initialization
+│   │   └── firestoreService.ts  # Firestore operations
+│   ├── hooks/               # Custom React hooks
+│   │   ├── useGameTimer.ts
+│   │   ├── useGameState.ts
+│   │   └── useCupManagement.ts
+│   ├── components/          # Reusable UI components
+│   │   └── game/            # Game-specific components
+│   │       ├── CupFormation.tsx
+│   │       ├── GameTable.tsx
+│   │       ├── SinkDialog.tsx
+│   │       ├── BounceSelectionDialog.tsx
+│   │       ├── RedemptionDialog.tsx
+│   │       ├── VictoryDialog.tsx
+│   │       └── EventsDialog.tsx (dev-only)
 │   ├── types/               # TypeScript type definitions
 │   │   ├── navigation.ts
 │   │   └── game.ts          # Game-related types
@@ -272,14 +287,15 @@ To make the data useful for analytics later (heatmaps, cup isolation stats), we 
 ## 🐛 Known Issues & Limitations
 
 - Grenade feature is temporarily disabled (UI present but non-functional)
-- Game events are stored in-memory only (not persisted to database yet)
 - No error boundaries or comprehensive error handling yet
 - No unit tests (testing infrastructure to be added)
+- Firebase Authentication not yet implemented (matches use player handles instead of user IDs)
 
 ## 📚 Additional Documentation
 
-- `CODE_REVIEW.md` - Comprehensive code review with improvement recommendations
-- `TODO.md` - Development roadmap and planned features
+- `dev_workbook.md` - Development workbook with progress tracking and TODO items
+- `FIREBASE_DATA_MODEL_ANALYSIS.md` - Detailed Firebase data model documentation
+- `FIREBASE_QUICK_START.md` - Firebase setup and configuration guide
 
 ## 🤝 Contributing
 

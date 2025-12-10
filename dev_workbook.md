@@ -1,6 +1,6 @@
 # Red Cup - Development Workbook
 
-**Last Updated**: 2025-12-07
+**Last Updated**: 2025-12-07 (Updated with Firebase integration and bug fixes)
 
 This workbook consolidates development planning, code review findings, and refactoring progress for the Red Cup beer pong analytics app.
 
@@ -301,6 +301,23 @@ The Red Cup codebase is functional and well-documented, but there are opportunit
 - ✅ Event sourcing pattern with UUID-based event IDs
 - ✅ Bounce shots linked via `bounceGroupId` for coordinated undo
 - ✅ Soft-delete pattern (isUndone flag) for analytics
+- ✅ Firebase/Firestore integration for match and event persistence
+- ✅ Development-only Events dialog for inspecting raw event data
+
+### 🔧 Recent Bug Fixes (2025-12-07)
+
+#### Firebase Integration Fixes
+
+1. **Multiple Match Creation Fix**
+   - Added `matchInitializedRef` guard in `GameScreen.tsx` to prevent duplicate match creation
+   - Prevents issues from React Strict Mode remounts or component lifecycle issues
+   - Ensures only one match is created per game session
+
+2. **bounceGroupId Undefined Error Fix**
+   - Fixed Firestore errors caused by `undefined` values in `bounceGroupId` field
+   - Modified `useCupManagement.ts` to conditionally include `bounceGroupId` only when defined
+   - Updated `firestoreService.ts` to handle optional fields correctly
+   - Regular shots no longer include `bounceGroupId` in the event object
 
 ### 🚀 Future State Implementation Plan
 
@@ -311,11 +328,11 @@ The Red Cup codebase is functional and well-documented, but there are opportunit
   - [ ] Try-catch for async operations
   - [ ] Input validation
   - [ ] Error states in UI
-- [ ] Break down GameScreen into smaller components
-  - [ ] Extract `CupFormation` component
-  - [ ] Extract `GameTable` component
-  - [ ] Extract dialog components (SinkDialog, BounceSelectionDialog, RedemptionDialog, VictoryDialog)
-  - [ ] Create custom hooks (`useGameTimer`, `useGameState`, `useCupManagement`)
+- [x] Break down GameScreen into smaller components
+  - [x] Extract `CupFormation` component
+  - [x] Extract `GameTable` component
+  - [x] Extract dialog components (SinkDialog, BounceSelectionDialog, RedemptionDialog, VictoryDialog)
+  - [x] Create custom hooks (`useGameTimer`, `useGameState`, `useCupManagement`)
 - [ ] Set up testing infrastructure
   - [ ] Jest and React Native Testing Library
   - [ ] Unit tests for utilities
@@ -339,14 +356,17 @@ The Red Cup codebase is functional and well-documented, but there are opportunit
   - [ ] Implement data persistence for user preferences
   - [ ] Cache game history locally
 
-- [ ] **Database**
+- [x] **Database**
 
-  - [ ] Set up a new project in the **Firebase Console**
-  - [ ] Install Firebase packages (`@react-native-firebase/firestore` or `firebase`)
-  - [ ] Integrate **Cloud Firestore** for data storage
-  - [ ] Configure security rules for Firestore
-  - [ ] Implement data models for matches and game events
-  - [ ] Persist game events to Firestore
+  - [x] Set up a new project in the **Firebase Console**
+  - [x] Install Firebase packages (`firebase`)
+  - [x] Integrate **Cloud Firestore** for data storage
+  - [ ] Configure security rules for Firestore (pending authentication)
+  - [x] Implement data models for matches and game events
+  - [x] Persist game events to Firestore
+  - [x] Match creation and completion tracking
+  - [x] Event saving with deferred mechanism for race conditions
+  - [x] Undo functionality integrated with Firestore
 
 - [ ] **Authentication**
 
@@ -418,25 +438,30 @@ The Red Cup codebase is functional and well-documented, but there are opportunit
 
 - **MVP Features**: ✅ Complete
 - **Code Refactoring**: ✅ Types, utilities, and constants extracted
+- **Component Breakdown**: ✅ Complete (custom hooks and sub-components extracted)
+- **Backend Integration**: ✅ Firebase/Firestore implemented
 - **Error Handling**: ⏳ Pending
-- **Component Breakdown**: ⏳ Pending
 - **Testing**: ⏳ Pending
-- **Backend Integration**: ⏳ Pending
 
 ### Next Immediate Steps
 
 1. Add error handling and validation
-2. Break down GameScreen into smaller components
-3. Set up testing infrastructure
-4. Begin Firebase integration
+2. Set up testing infrastructure
+3. Implement Firebase Authentication
+4. Configure Firestore security rules
 
 ### Key Files
 
-- `src/screens/GameScreen.tsx` - Main game screen (needs refactoring)
+- `src/screens/GameScreen.tsx` - Main game screen (refactored with custom hooks)
+- `src/hooks/` - Custom hooks (`useGameTimer`, `useGameState`, `useCupManagement`)
+- `src/components/game/` - Game-specific components (dialogs, table, formations)
+- `src/services/firestoreService.ts` - Firebase/Firestore integration
+- `src/services/firebase.ts` - Firebase initialization
 - `src/types/game.ts` - Game type definitions
 - `src/utils/` - Utility functions
 - `src/constants/gameConstants.ts` - Game constants
 - `README.md` - Project documentation
+- `FIREBASE_DATA_MODEL_ANALYSIS.md` - Firebase data model documentation
 
 ---
 
