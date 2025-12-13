@@ -4,12 +4,9 @@ A React Native mobile application for Beer Pong analytics and tournament managem
 
 ## 🚀 Tech Stack
 
-### Core Stack
-
-- **Framework**: React Native
+- **Framework**: React Native with Expo (~54.0.25)
 - **Language**: TypeScript
-- **Development Toolset**: Expo (~54.0.25)
-- **UI Components**: React Native Paper (Material Design 3)
+- **UI**: React Native Paper (Material Design 3)
 - **Navigation**: React Navigation (Native Stack)
 - **Backend**: Firebase (Firestore)
 - **Local Storage**: AsyncStorage integration
@@ -75,31 +72,35 @@ A React Native mobile application for Beer Pong analytics and tournament managem
    - Intuitive controls and navigation
    - Web support (React Native Web) for browser testing
 
+6. **Firebase Integration:**
+   - Match persistence to Firestore
+   - Event sourcing with real-time event storage
+   - Match completion tracking with timestamps
+
 ### 🚧 Planned Features
 
-5. **Tournament Mode:** Ability to organize a bracket and track progress.
+- **Tournament Mode:** Bracket organization and progress tracking
+- **Stats Engine:** Efficiency metrics, clutch factor, cup isolation heatmaps
+- **User Profiles & Authentication:** Firebase Auth integration
+- **Grenade Shot Type:** Full implementation (UI present, logic pending)
 
-6. **Stats Engine:**
-
-   - _Efficiency:_ How fast a player clears the rack.
-   - _Clutch Factor:_ Performance on the final cup or "Rebuttals/Redemptions."
-   - _Cup Isolation:_ Which specific cups a player hits most often.
-
-7. **User Profiles:** User profile creation to enable the above features.
-8. **Firebase Integration:** ✅ Match persistence and event storage implemented. ⏳ User authentication pending.
-
-## 🏗️ Technical Architecture
-
-### Project Structure
+## 🏗️ Project Structure
 
 ```text
 RedCup/
 ├── src/
-│   ├── components/          # Reusable UI components
 │   ├── screens/             # Screen components
 │   │   ├── HomeScreen.tsx
 │   │   ├── QuickGameSetupScreen.tsx
 │   │   └── GameScreen.tsx
+│   ├── components/game/     # Game-specific UI components
+│   │   ├── CupFormation.tsx
+│   │   ├── GameTable.tsx
+│   │   ├── SinkDialog.tsx
+│   │   ├── BounceSelectionDialog.tsx
+│   │   ├── RedemptionDialog.tsx
+│   │   ├── VictoryDialog.tsx
+│   │   └── EventsDialog.tsx (dev-only)
 │   ├── services/            # Backend services
 │   │   ├── firebase.ts      # Firebase initialization
 │   │   └── firestoreService.ts  # Firestore operations
@@ -107,149 +108,76 @@ RedCup/
 │   │   ├── useGameTimer.ts
 │   │   ├── useGameState.ts
 │   │   └── useCupManagement.ts
-│   ├── components/          # Reusable UI components
-│   │   └── game/            # Game-specific components
-│   │       ├── CupFormation.tsx
-│   │       ├── GameTable.tsx
-│   │       ├── SinkDialog.tsx
-│   │       ├── BounceSelectionDialog.tsx
-│   │       ├── RedemptionDialog.tsx
-│   │       ├── VictoryDialog.tsx
-│   │       └── EventsDialog.tsx (dev-only)
 │   ├── types/               # TypeScript type definitions
-│   │   ├── navigation.ts
-│   │   └── game.ts          # Game-related types
 │   ├── utils/               # Helper functions
-│   │   ├── cupPositions.ts  # Cup position generation
-│   │   └── timeFormatter.ts # Time formatting utilities
 │   ├── constants/           # App constants
-│   │   └── gameConstants.ts # Game configuration constants
 │   └── theme/               # Theme and design system
-│       ├── colors.ts
-│       ├── DesignSystem.ts
-│       └── RedCupTheme.ts
-├── assets/
-│   └── images/              # App images and logos
+├── .secure/                 # Gitignored secrets (Firebase config)
+├── assets/                  # Images and static assets
 ├── App.tsx                  # Root component
-├── index.ts                 # Entry point
-├── package.json
-└── CODE_REVIEW.md           # Code review and improvement recommendations
+└── package.json
 ```
 
 ## 🛠️ Installation & Setup
 
 ### Prerequisites
 
-- Node.js (v18 or later recommended)
+- Node.js (v18 or later)
 - npm or yarn
-- Expo CLI (optional, but recommended)
-- iOS Simulator (for Mac) or Android Emulator / physical device
-- Firebase project setup
+- Expo Go app (for mobile testing) or iOS Simulator/Android Emulator
+- Firebase project (for data persistence)
 
-### Installation Steps
+### Setup Steps
 
-1. **Clone the repository**
+1. **Clone and install**
 
    ```bash
    git clone <repository-url>
    cd RedCup
-   ```
-
-2. **Install dependencies**
-
-   ```bash
    npm install
    ```
 
-3. **Start the development server**
+2. **Configure Firebase**
+   - Create a Firebase project at [Firebase Console](https://console.firebase.google.com)
+   - Get your Firebase config from Project Settings → Your apps → Web app
+   - Create `.secure/firebase.config.ts` (see `.secure/README.md` for template)
+   - The `.secure` folder is gitignored to protect credentials
+
+3. **Start development server**
 
    ```bash
    npm start
+   # Then press: a (Android), i (iOS), or w (web)
    ```
 
-   Or use the platform-specific commands:
-
-   ```bash
-   npm run android  # For Android
-   npm run ios      # For iOS
-   npm run web      # For web browser (Chrome/Edge)
-   ```
-
-4. **Run on your device**
-
-   - Scan the QR code with Expo Go app (iOS/Android)
-   - Or press `a` for Android emulator, `i` for iOS simulator
+4. **Run on device**
+   - Scan QR code with Expo Go app, or
+   - Use platform-specific commands: `npm run android` | `npm run ios` | `npm run web`
 
 ## 📊 Data Model
 
-The data model follows an **Event Sourcing** pattern, storing discrete timestamped events for granular replay and analysis.
+The app uses an **Event Sourcing** pattern, storing discrete timestamped events for granular replay and analytics.
 
-### Core Tables
+### Firestore Collections
 
-_**TODO: Review this section**_
+- **matches**: Match metadata (participants, rules, timestamps, winner)
+- **events**: Individual cup sink events with full game state snapshots
 
-#### 1. Users (The Constant)
+### Key Design Decisions
 
-Standard user profile information.
+- **Only track made shots** (never misses) for speed of play
+- **Event-based architecture** enables replay and analytics
+- **Soft-delete pattern** (`isUndone` flag) preserves analytics integrity
+- **UUID-based event IDs** prevent collisions
+- **Bounce shots** linked via `bounceGroupId` for coordinated undo
 
-| Field     | Type        | Description                      |
-| --------- | ----------- | -------------------------------- |
-| `user_id` | String (PK) | Unique user identifier           |
-| `handle`  | String      | Display name (e.g., "BeerBaron") |
+See `FIREBASE_DATA_MODEL_ANALYSIS.md` for detailed schema documentation.
 
-#### 2. Matches (The Container)
+## 📝 Notes
 
-Holds the state of each game/match.
-
-| Field           | Type                  | Description                                               |
-| --------------- | --------------------- | --------------------------------------------------------- |
-| `match_id`      | String (PK)           | Unique match identifier                                   |
-| `tournament_id` | String (FK, Nullable) | Links to tournament (null for ad-hoc games)               |
-| `rules_config`  | JSON                  | Stores cup count (6 or 10) and game rules                 |
-| `started_at`    | Timestamp             | Match start time                                          |
-| `ended_at`      | Timestamp             | Match end time (crucial for calculating speed/efficiency) |
-| `winning_side`  | Enum                  | `'Home'` or `'Away'` (or `0` or `1`)                      |
-
-#### 3. Match_Participants (The "Partner" Logic)
-
-Junction table that solves team composition. Instead of a Team ID, users are grouped by `match_id` and `side`. Everyone on Side 0 are partners; everyone on Side 1 are opponents.
-
-| Field        | Type        | Description                       |
-| ------------ | ----------- | --------------------------------- |
-| `match_id`   | String (FK) | References the match              |
-| `user_id`    | String (FK) | References the user               |
-| `side`       | Integer     | `0` or `1` - Team assignment      |
-| `is_captain` | Boolean     | Optional: Who finalized the score |
-
-#### 4. Made_Shots (The Event Stream)
-
-Since we only track makes, this table is "sparse" (low volume, high value). This is the core event stream that enables all analytics.
-
-| Field           | Type        | Description                                               |
-| --------------- | ----------- | --------------------------------------------------------- |
-| `shot_id`       | String (PK) | Unique shot identifier                                    |
-| `match_id`      | String (FK) | References the match                                      |
-| `user_id`       | String (FK) | Who threw the shot                                        |
-| `cup_index`     | Integer     | See "Cup Mapping" below                                   |
-| `timestamp`     | Timestamp   | When the shot was made (allows runs/hot streaks analysis) |
-| `is_redemption` | Boolean     | Was this a clutch save/redemption?                        |
-
-### Technical Detail: Cup Mapping
-
-To make the data useful for analytics later (heatmaps, cup isolation stats), we use a standard coordinate system for cups.
-
-- **10-Cup Rack:** Pyramid indices `0` through `9`
-- **6-Cup Rack:** Pyramid indices `0` through `5`
-
-## 🐛 Known Issues & Limitations
-
-- Grenade feature is temporarily disabled (UI present but non-functional)
-- No error boundaries or comprehensive error handling yet
-- No unit tests (testing infrastructure to be added)
-
-## 🤝 Contributing
-
-This is a private project. For questions or suggestions, please contact the project maintainer.
+- Firebase config stored in `.secure/` folder (gitignored)
+- See `.secure/README.md` for secrets management guide
+- See `FIREBASE_DATA_MODEL_ANALYSIS.md` for detailed data model documentation
 
 ## 📄 License
 
