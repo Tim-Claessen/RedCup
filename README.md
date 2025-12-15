@@ -38,14 +38,15 @@ A React Native mobile application for Beer Pong analytics and tournament managem
 
 2. **The Input Interface:**
 
-   - Visual beer pong table with clickable cup formations (pyramid layout)
-   - Real-time timer tracking game duration
-   - Cup sink recording with player attribution
-   - Shot type tracking: Regular, Bounce (with second cup selection), and Grenade (2v2 only, coming soon)
-   - Table rotation for perspective switching (180° rotation)
-   - Pause/Resume game functionality
-   - Undo functionality for correcting mistakes
-   - Bounce shot selection dialog with mirrored cup layout
+- Visual beer pong table with clickable cup formations (pyramid layout)
+- Real-time timer tracking game duration
+- Cup sink recording with player attribution
+- Shot type tracking: Regular, Bounce (with second cup selection)
+- Table rotation for perspective switching (180° rotation)
+- Pause/Resume game functionality
+- Undo functionality for correcting mistakes
+- Bounce shot selection dialog with mirrored cup layout
+- Re-rack support: re-arrange remaining cups into any valid layout within the formation
 
 3. **Game Tracking:**
 
@@ -64,6 +65,8 @@ A React Native mobile application for Beer Pong analytics and tournament managem
    - Redemption restores last cup(s) without undoing events
    - Victory overlay with player name and Home button
    - Automatic player selection for 1v1 games
+- Surrender flow that awards remaining cups to the opponent for scoring only
+- Abandoned games automatically marked as DNF (did not finish) for stats
 
 5. **User Interface:**
    - Material Design 3 theme (React Native Paper)
@@ -156,28 +159,56 @@ RedCup/
 
 ## 📊 Data Model
 
-The app uses an **Event Sourcing** pattern, storing discrete timestamped events for granular replay and analytics.
+The app uses an **event-sourcing-style** model optimized for analytics and speed of play.  
+We only track **made shots** and derive match state from them.
 
-### Firestore Collections
+### Firestore Collections (v1)
 
-- **matches**: Match metadata (participants, rules, timestamps, winner)
-- **events**: Individual cup sink events with full game state snapshots
+- **users**  
+  - `userId`: string (document ID)  
+  - `handle`: string  
+  - `createdAt`: Timestamp
+
+- **matches**  
+  - `matchId`: string (document ID)  
+  - `tournamentId`: string \| null (reserved for future tournaments)  
+  - `rulesConfig`: `{ cupCount: 6 | 10, gameType: '1v1' | '2v2' }`  
+  - `participants`: `[{ userId?: string, handle: string, side: 0 | 1 }]`  
+  - `startedAt`: Timestamp  
+  - `endedAt`: Timestamp \| null  
+  - `winningSide`: `0 | 1` (team1 / team2)  
+  - `team1Score`: number (cups made by team1)  
+  - `team2Score`: number (cups made by team2)  
+  - `completed`: boolean
+
+- **made_shots** (top-level, analytics-focused)  
+  - **Doc ID**: `shotId` (same as `eventId` in game events)  
+  - `shotId`: string  
+  - `matchId`: string  
+  - `userId?`: string (will replace `playerHandle` once auth is wired)  
+  - `playerHandle`: string (current identifier, mapped to players in UI)  
+  - `cupIndex`: number (standard cup mapping, 0–5 or 0–9)  
+  - `timestamp`: number (ms since epoch)  
+  - `isBounce`: boolean  
+  - `isGrenade`: boolean  
+  - `isRedemption`: boolean  
+  - `isUndone`: boolean (soft-delete / undo)  
+  - `bounceGroupId?`: string (links multi-cup bounce shots)  
+  - `team1CupsRemaining`: number  
+  - `team2CupsRemaining`: number  
 
 ### Key Design Decisions
 
-- **Only track made shots** (never misses) for speed of play
-- **Event-based architecture** enables replay and analytics
-- **Soft-delete pattern** (`isUndone` flag) preserves analytics integrity
-- **UUID-based event IDs** prevent collisions
-- **Bounce shots** linked via `bounceGroupId` for coordinated undo
-
-See `FIREBASE_DATA_MODEL_ANALYSIS.md` for detailed schema documentation.
+- **Only track made shots** (never misses) for speed of play  
+- **Top-level `made_shots` collection** for player career stats and leaderboards  
+- **Soft-delete pattern** (`isUndone` flag) so analytics can ignore undone events without losing history  
+- **UUID-based event IDs** prevent collisions and are reused as `shotId`/document IDs in Firestore  
+- **Bounce shots** linked via `bounceGroupId` for coordinated undo and bounce analytics
 
 ## 📝 Notes
 
 - Firebase config stored in `.secure/` folder (gitignored)
 - See `.secure/README.md` for secrets management guide
-- See `FIREBASE_DATA_MODEL_ANALYSIS.md` for detailed data model documentation
 
 ## 📄 License
 

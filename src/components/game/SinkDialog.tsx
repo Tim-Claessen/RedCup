@@ -84,7 +84,6 @@ export const SinkDialog: React.FC<SinkDialogProps> = ({
           buttons={[
             { value: 'regular', label: 'Regular' },
             { value: 'bounce', label: 'Bounce' },
-            { value: 'grenade', label: 'Grenade (Coming Soon)', disabled: true },
           ]}
           style={styles.shotTypeButtons}
           theme={{
@@ -95,15 +94,6 @@ export const SinkDialog: React.FC<SinkDialogProps> = ({
             },
           }}
         />
-
-        {shotType === 'grenade' && (
-          <Text
-            variant="bodySmall"
-            style={{ color: theme.colors.error, marginTop: DesignSystem.spacing.sm }}
-          >
-            ⚠️ Grenade feature is not available yet
-          </Text>
-        )}
 
         {shotType === 'bounce' && (
           <Text

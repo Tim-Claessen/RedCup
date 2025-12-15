@@ -6,8 +6,8 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { Cup, GameEvent, TeamId, SelectedCup, ShotType, GameType, Player } from '../types/game';
-import { TIMESTAMP_TOLERANCE_MS } from '../constants/gameConstants';
+import { Cup, GameEvent, TeamId, SelectedCup, ShotType, GameType, Player, CupCount } from '../types/game';
+import { CupPosition, getCupPositions } from '../utils/cupPositions';
 import { saveGameEvent, markEventAsUndone } from '../services/firestoreService';
 
 interface UseCupManagementProps {
@@ -22,6 +22,7 @@ interface UseCupManagementProps {
   team2Players: Player[];
   matchId: string | null; // Firebase match ID
   onVictory?: (winningTeam: TeamId) => void;
+  cupCount: CupCount; // Starting cup count (6 or 10)
 }
 
 interface UseCupManagementReturn {
@@ -40,6 +41,7 @@ interface UseCupManagementReturn {
   getAvailablePlayers: () => string[];
   getLastSinkEvent: () => { side: TeamId; cupIds: number[]; eventIds: string[] } | null;
   restoreCups: (cupIds: number[]) => void;
+  rerackSide: (side: TeamId, slotIndexes?: number[]) => void;
 }
 
 export const useCupManagement = ({
@@ -54,6 +56,7 @@ export const useCupManagement = ({
   team2Players,
   matchId,
   onVictory,
+  cupCount,
 }: UseCupManagementProps): UseCupManagementReturn => {
   const [selectedCup, setSelectedCup] = useState<SelectedCup | null>(null);
   const [selectedPlayer, setSelectedPlayer] = useState<string>('');
@@ -401,6 +404,71 @@ export const useCupManagement = ({
   };
 
   /**
+   * Re-racks the remaining (unsunk) cups on a given side into a tight pyramid.
+   * This intentionally reassigns cup IDs based on the new layout, so the same
+   * numeric cupId may be reused multiple times during a game. This is OK
+   * because cupId is mainly used for "sunk shot" analytics within a match.
+   */
+  const rerackSide = (side: TeamId, slotIndexes?: number[]) => {
+    const cups = side === 'team1' ? team1Cups : team2Cups;
+
+    const unsunkCups = cups.filter(c => !c.sunk);
+    const sunkCups = cups.filter(c => c.sunk);
+
+    if (unsunkCups.length === 0) {
+      return;
+    }
+
+    // Base positions for the full rack (6 or 10 cups)
+    const allPositions = getCupPositions(cupCount);
+
+    // Determine which formation slots will hold the remaining cups vs sunk cups
+    const totalSlots = allPositions.length;
+    const defaultSelected = Array.from({ length: unsunkCups.length }, (_, i) => i);
+
+    const selectedSlots =
+      slotIndexes && slotIndexes.length === unsunkCups.length
+        ? slotIndexes
+        : defaultSelected;
+
+    const availableSlots = new Set<number>(
+      Array.from({ length: totalSlots }, (_, i) => i)
+    );
+    selectedSlots.forEach((idx) => availableSlots.delete(idx));
+
+    const sunkSlots = Array.from(availableSlots);
+
+    const reRackedUnsunk: Cup[] = unsunkCups.map((cup, index) => {
+      const slotIndex = selectedSlots[index];
+      const pos = allPositions[slotIndex];
+      return {
+        ...cup,
+        // Reassign cup IDs to correspond to their new slot index
+        id: slotIndex,
+        position: pos ?? cup.position,
+      };
+    });
+
+    const reRackedSunk: Cup[] = sunkCups.map((cup, index) => {
+      const slotIndex = sunkSlots[index] ?? index;
+      const pos = allPositions[slotIndex];
+      return {
+        ...cup,
+        id: slotIndex,
+        position: pos ?? cup.position,
+      };
+    });
+
+    const newCups = [...reRackedUnsunk, ...reRackedSunk];
+
+    if (side === 'team1') {
+      setTeam1Cups(newCups);
+    } else {
+      setTeam2Cups(newCups);
+    }
+  };
+
+  /**
    * Undoes the most recent cup sink
    * Marks the original event(s) as undone and restores cup state
    * For bounce shots (2 events with same timestamp), undoes both cups
@@ -450,5 +518,6 @@ export const useCupManagement = ({
     getAvailablePlayers,
     getLastSinkEvent,
     restoreCups,
+    rerackSide,
   };
 };

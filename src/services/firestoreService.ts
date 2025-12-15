@@ -31,12 +31,19 @@ export interface MatchDocument {
     userId?: string; // Will be added when auth is implemented
     handle: string; // Keep for now until auth is added
     side: 0 | 1; // 0 = team1, 1 = team2
-    isCaptain?: boolean;
   }>;
   startedAt: any; // Firestore timestamp
   endedAt?: any; // Firestore timestamp (nullable, only set when match completes)
   winningSide?: 0 | 1; // 0 = team1, 1 = team2 (only set when match completes)
+  team1Score?: number; // Final score (cups made by team1)
+  team2Score?: number; // Final score (cups made by team2)
   completed: boolean;
+  /**
+   * Result classification for analytics filtering
+   * - 'completed' = normal finished game (including surrenders/forfeits)
+   * - 'dnf' = did not finish / abandoned mid-game
+   */
+  result?: 'completed' | 'dnf';
 }
 
 export interface MadeShotDocument {
@@ -241,11 +248,13 @@ export const saveGameEvents = async (
 
 /**
  * Marks a match as completed
- * Updates match with end time and winning side
+ * Updates match with end time, winning side, and final scores
  */
 export const completeMatch = async (
   matchId: string, 
-  winningSide: 0 | 1
+  winningSide: 0 | 1,
+  team1Score: number,
+  team2Score: number
 ): Promise<boolean> => {
   if (!db) {
     console.warn('Firestore not initialized, match completion not saved');
@@ -257,13 +266,42 @@ export const completeMatch = async (
     await updateDoc(matchRef, {
       completed: true,
       endedAt: serverTimestamp(),
+      result: 'completed',
       winningSide,
+      team1Score,
+      team2Score,
     });
 
     console.log('Match marked as completed:', matchId);
     return true;
   } catch (error) {
     console.error('Error completing match:', error);
+    return false;
+  }
+};
+
+/**
+ * Marks a match as "Did Not Finish" (DNF) when abandoned
+ * Used when the game screen is exited before a normal completion flow.
+ */
+export const markMatchAsDNF = async (matchId: string): Promise<boolean> => {
+  if (!db) {
+    console.warn('Firestore not initialized, DNF not saved');
+    return false;
+  }
+
+  try {
+    const matchRef = doc(db, 'matches', matchId);
+    await updateDoc(matchRef, {
+      completed: true,
+      endedAt: serverTimestamp(),
+      result: 'dnf',
+    });
+
+    console.log('Match marked as DNF:', matchId);
+    return true;
+  } catch (error) {
+    console.error('Error marking match as DNF:', error);
     return false;
   }
 };

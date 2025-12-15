@@ -34,7 +34,10 @@ import { BounceSelectionDialog } from '../components/game/BounceSelectionDialog'
 import { RedemptionDialog } from '../components/game/RedemptionDialog';
 import { VictoryDialog } from '../components/game/VictoryDialog';
 import { EventsDialog } from '../components/game/EventsDialog';
-import { createMatch, completeMatch } from '../services/firestoreService';
+import { GameControlsMenu } from '../components/game/GameControlsMenu';
+import { SurrenderDialog } from '../components/game/SurrenderDialog';
+import { RerackDialog } from '../components/game/RerackDialog';
+import { createMatch, completeMatch, markMatchAsDNF } from '../services/firestoreService';
 
 interface GameScreenProps {
   navigation: GameScreenNavigationProp;
@@ -45,12 +48,16 @@ const GameScreen: React.FC<GameScreenProps> = ({ navigation, route }) => {
   const theme = useTheme();
   const { cupCount, team1Players, team2Players, gameType } = route.params;
   
-  // Firebase match ID - created when game starts
+// ----- Match identity & high-level game flags -----
+// Firebase match ID - created when game starts
   const [matchId, setMatchId] = useState<string | null>(null);
   const matchInitializedRef = useRef(false); // Prevent multiple match creations
+  const [matchCompleted, setMatchCompleted] = useState(false);
+  const matchCompletedRef = useRef(false); // always holds latest completion state for unmount checks
+  const [isGameOver, setIsGameOver] = useState(false);
 
-  // Custom hooks
-  const { elapsedSeconds, isPaused, togglePause } = useGameTimer();
+// ----- Core hooks: timer + game/cup state -----
+  const { elapsedSeconds, isPaused, setIsPaused, togglePause } = useGameTimer();
   const {
     team1Cups,
     team2Cups,
@@ -62,6 +69,8 @@ const GameScreen: React.FC<GameScreenProps> = ({ navigation, route }) => {
     setGameEvents,
     winningTeam,
     setWinningTeam,
+    team1CupsRemaining,
+    team2CupsRemaining,
   } = useGameState({ cupCount: cupCount as CupCount });
 
   // Dialog visibility states
@@ -72,8 +81,10 @@ const GameScreen: React.FC<GameScreenProps> = ({ navigation, route }) => {
   const [victoriousPlayer, setVictoriousPlayer] = useState<string>('');
   const [rulesVisible, setRulesVisible] = useState(false);
   const [eventsVisible, setEventsVisible] = useState(false);
+  const [surrenderDialogVisible, setSurrenderDialogVisible] = useState(false);
+  const [rerackDialogVisible, setRerackDialogVisible] = useState(false);
 
-  // Create match in Firestore when game starts
+// ----- Lifecycle: create match on mount -----
   useEffect(() => {
     // Prevent multiple match creations (e.g., from React Strict Mode or remounts)
     if (matchInitializedRef.current) {
@@ -98,7 +109,22 @@ const GameScreen: React.FC<GameScreenProps> = ({ navigation, route }) => {
     initializeMatch();
   }, []); // Only run once when component mounts
 
-  // Cup management hook
+// ----- Lifecycle: mark match as DNF on unmount if not completed -----
+// Uses a ref so the cleanup reads the latest completion state even if it changed
+// after this effect was created.
+  useEffect(() => {
+    if (!matchId) return;
+
+    return () => {
+      if (!matchCompletedRef.current) {
+        markMatchAsDNF(matchId).catch(error => {
+          console.error('Failed to mark match as DNF on unmount:', error);
+        });
+      }
+    };
+  }, [matchId]);
+
+// ----- Cup management: sinks, undo, redemption, victory -----
   const cupManagement = useCupManagement({
     team1Cups,
     team2Cups,
@@ -114,19 +140,17 @@ const GameScreen: React.FC<GameScreenProps> = ({ navigation, route }) => {
       setWinningTeam(winner);
       setRedemptionVisible(true);
     },
+    cupCount: cupCount as CupCount,
   });
 
-  /**
-   * Handles cup press - opens dialog to record cup sink
-   */
+// ----- Event handlers -----
+// Handles cup press - opens dialog to record cup sink
   const handleCupPress = (side: TeamId, cupId: number) => {
     cupManagement.handleCupPress(side, cupId);
     setSinkDialogVisible(true);
   };
 
-  /**
-   * Handles sink cup confirmation
-   */
+// Handles sink cup confirmation (regular vs bounce)
   const handleSinkCup = () => {
     const isBounce = cupManagement.handleSinkCup();
     
@@ -141,24 +165,18 @@ const GameScreen: React.FC<GameScreenProps> = ({ navigation, route }) => {
     setSinkDialogVisible(false);
   };
 
-  /**
-   * Handles bounce cup selection
-   */
+// Handles bounce cup selection for 2-cup bounce shots
   const handleBounceCupSelect = (bounceCupId: number) => {
     cupManagement.handleBounceCupSelect(bounceCupId);
     setBounceCupSelectionVisible(false);
   };
 
-  /**
-   * Rotates the table view by swapping team positions
-   */
+// Rotates the table view by swapping team positions
   const handleRotateTable = () => {
     setTeam1Side((prev) => (prev === 'bottom' ? 'top' : 'bottom'));
   };
 
-  /**
-   * Handles redemption "Play on" option
-   */
+// Handles redemption "Play on" option
   const handleRedemptionPlayOn = () => {
     const lastSink = cupManagement.getLastSinkEvent();
     if (lastSink) {
@@ -185,9 +203,7 @@ const GameScreen: React.FC<GameScreenProps> = ({ navigation, route }) => {
     setWinningTeam(null);
   };
 
-  /**
-   * Handles redemption "Win" option
-   */
+// Handles redemption "Win" option
   const handleRedemptionWin = () => {
     // Store winning team before clearing state
     const currentWinningTeam = winningTeam;
@@ -200,28 +216,107 @@ const GameScreen: React.FC<GameScreenProps> = ({ navigation, route }) => {
     setVictoriousPlayer(winningPlayers);
     setVictoryVisible(true);
     setWinningTeam(null);
+    setIsPaused(true);
+    setIsGameOver(true);
     
     // Mark match as completed in Firestore
     if (matchId && currentWinningTeam) {
       const winningSide: 0 | 1 = currentWinningTeam === 'team1' ? 0 : 1;
-      completeMatch(matchId, winningSide).catch(error => {
-        console.error('Failed to complete match:', error);
-      });
+
+      // Compute final scores based on cups made by each team.
+      // Each team starts with `cupCount` cups; a team's score is the number of
+      // opponent cups they have sunk.
+      const totalCups = cupCount as number;
+      const team1Score = totalCups - team2CupsRemaining;
+      const team2Score = totalCups - team1CupsRemaining;
+
+      completeMatch(matchId, winningSide, team1Score, team2Score)
+        .then(success => {
+          if (success) {
+            setMatchCompleted(true);
+            matchCompletedRef.current = true;
+          }
+        })
+        .catch(error => {
+          console.error('Failed to complete match:', error);
+        });
     }
   };
 
-  /**
-   * Handles victory dialog home button
-   */
+// Handles surrender flow: losing side concedes and remaining cups are
+// only reflected in the match result (cup state/events stay unchanged).
+  const handleSurrender = (surrenderingTeam: TeamId) => {
+    if (!matchId) {
+      console.warn('Cannot surrender without a matchId');
+      setSurrenderDialogVisible(false);
+      return;
+    }
+
+    const totalCups = cupCount as number;
+
+    // Current scores based on cups already sunk
+    const team1ScoreCurrent = totalCups - team2CupsRemaining;
+    const team2ScoreCurrent = totalCups - team1CupsRemaining;
+
+    let winningSide: 0 | 1;
+    let finalTeam1Score: number;
+    let finalTeam2Score: number;
+
+    if (surrenderingTeam === 'team1') {
+      // Team 1 surrenders -> Team 2 gets credit for all remaining team1 cups
+      winningSide = 1;
+      finalTeam2Score = totalCups;
+      finalTeam1Score = team1ScoreCurrent;
+    } else {
+      // Team 2 surrenders -> Team 1 gets credit for all remaining team2 cups
+      winningSide = 0;
+      finalTeam1Score = totalCups;
+      finalTeam2Score = team2ScoreCurrent;
+    }
+
+    // Pause timer and mark end-of-game state
+    setIsPaused(true);
+    setIsGameOver(true);
+
+    // Show victory dialog with winning team name(s)
+    const winningPlayers =
+      winningSide === 0
+        ? team1Players.map(p => p.handle).join(' & ')
+        : team2Players.map(p => p.handle).join(' & ');
+    setVictoriousPlayer(winningPlayers);
+    setVictoryVisible(true);
+
+    completeMatch(matchId, winningSide, finalTeam1Score, finalTeam2Score)
+      .then(success => {
+        if (success) {
+          setMatchCompleted(true);
+          matchCompletedRef.current = true;
+        }
+      })
+      .catch(error => {
+        console.error('Failed to complete match on surrender:', error);
+      });
+
+    setSurrenderDialogVisible(false);
+  };
+
+// Handles victory dialog "Home" button
   const handleVictoryHome = () => {
     setVictoryVisible(false);
     setVictoriousPlayer('');
     navigation.navigate('Home');
   };
 
-  // Determine opponent cups for bounce selection
+// ----- Derived values for rendering -----
+// Determine opponent cups for bounce selection
   const opponentCups = cupManagement.selectedCup?.side === 'team1' ? team1Cups : team2Cups;
   const opponentSide = cupManagement.selectedCup?.side || 'team1';
+
+  // Human-readable labels for teams based on player handles
+  const team1Label =
+    team1Players.map(p => p.handle).filter(Boolean).join(' & ') || 'Team 1';
+  const team2Label =
+    team2Players.map(p => p.handle).filter(Boolean).join(' & ') || 'Team 2';
 
   return (
     <SafeAreaView
@@ -243,63 +338,47 @@ const GameScreen: React.FC<GameScreenProps> = ({ navigation, route }) => {
         team1Players={team1Players}
         team2Players={team2Players}
         onCupPress={handleCupPress}
-        disabled={isPaused}
+        disabled={isPaused || isGameOver}
       />
 
-      {/* Action Buttons */}
-      <View style={styles.actionButtons}>
-        <Button
-          mode="outlined"
-          onPress={togglePause}
-          style={styles.actionButton}
-          textColor={theme.colors.onSurface}
-          icon={isPaused ? 'play' : 'pause'}
-        >
-          {isPaused ? 'Resume' : 'Pause'}
-        </Button>
-        <Button
-          mode="outlined"
-          onPress={cupManagement.handleUndo}
-          style={styles.actionButton}
-          textColor={theme.colors.onSurface}
-          icon="undo"
-          disabled={!cupManagement.getLastSinkEvent() || isPaused}
-        >
-          Undo
-        </Button>
-        <Button
-          mode="outlined"
-          onPress={() => setRulesVisible(true)}
-          style={styles.actionButton}
-          textColor={theme.colors.onSurface}
-          icon="book-open-variant"
-        >
-          Rules
-        </Button>
-        <Button
-          mode="outlined"
-          onPress={handleRotateTable}
-          style={styles.actionButton}
-          textColor={theme.colors.onSurface}
-          icon="rotate-3d-variant"
-        >
-          Rotate
-        </Button>
-        {__DEV__ && (
-          <Button
-            mode="outlined"
-            onPress={() => setEventsVisible(true)}
-            style={styles.actionButton}
-            textColor={theme.colors.onSurface}
-            icon="database"
-          >
-            Events
-          </Button>
-        )}
-      </View>
+      {/* Action Controls */}
+      <GameControlsMenu
+        isPaused={isPaused}
+        isGameOver={isGameOver}
+        hasUndo={!!cupManagement.getLastSinkEvent()}
+        onTogglePause={togglePause}
+        onUndo={cupManagement.handleUndo}
+        onShowRules={() => setRulesVisible(true)}
+        onRotateTable={handleRotateTable}
+        onShowRerack={() => setRerackDialogVisible(true)}
+        onShowSurrender={() => setSurrenderDialogVisible(true)}
+        onShowEvents={__DEV__ ? () => setEventsVisible(true) : undefined}
+      />
 
       {/* Dialogs */}
       <Portal>
+        <RerackDialog
+          visible={rerackDialogVisible}
+          team1Label={team1Label}
+          team2Label={team2Label}
+          team1Remaining={team1CupsRemaining}
+          team2Remaining={team2CupsRemaining}
+          cupCount={cupCount as CupCount}
+          onDismiss={() => setRerackDialogVisible(false)}
+          onRerack={(team, slots) => {
+            cupManagement.rerackSide(team, slots);
+            setRerackDialogVisible(false);
+          }}
+        />
+
+        <SurrenderDialog
+          visible={surrenderDialogVisible}
+          team1Label={team1Label}
+          team2Label={team2Label}
+          onDismiss={() => setSurrenderDialogVisible(false)}
+          onSurrender={handleSurrender}
+        />
+
         <SinkDialog
           visible={sinkDialogVisible}
           onDismiss={() => {
@@ -391,16 +470,6 @@ const styles = StyleSheet.create({
   timerContainer: {
     alignItems: 'center',
     paddingVertical: DesignSystem.spacing.md,
-  },
-  actionButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    paddingHorizontal: DesignSystem.spacing.md,
-    paddingVertical: DesignSystem.spacing.md,
-    gap: DesignSystem.spacing.sm,
-  },
-  actionButton: {
-    flex: 1,
   },
 });
 
