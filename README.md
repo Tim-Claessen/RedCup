@@ -59,6 +59,7 @@ A React Native mobile application for Beer Pong analytics and tournament managem
 RedCup/
 ├── src/
 │   ├── screens/                    # Screen components
+│   │   ├── LoginScreen.tsx         # Authentication screen (sign in, sign up, guest mode, handle creation)
 │   │   ├── HomeScreen.tsx          # Main entry screen with navigation options
 │   │   ├── QuickGameSetupScreen.tsx # Game configuration (players, cup count, game type)
 │   │   └── GameScreen.tsx          # Main game interface with table and controls
@@ -83,7 +84,11 @@ RedCup/
 │   │
 │   ├── services/                   # Backend services
 │   │   ├── firebase.ts             # Firebase initialization and configuration
-│   │   └── firestoreService.ts     # Firestore operations (matches, made_shots, undo)
+│   │   ├── firestoreService.ts     # Firestore operations (matches, made_shots, undo)
+│   │   └── userService.ts          # User handle management (create, retrieve, search)
+│   │
+│   ├── contexts/                   # React contexts
+│   │   └── AuthContext.tsx         # Authentication state and methods (login, signup, guest mode)
 │   │
 │   ├── types/                      # TypeScript type definitions
 │   │   ├── game.ts                 # Game entities (Cup, GameEvent, Player, etc.)
@@ -189,6 +194,15 @@ Event-sourcing pattern optimized for analytics. Only tracks **made shots**.
 
 ### Firestore Collections
 
+#### **users**
+User handle mapping. Document ID is the `userId` (Firebase Auth UID).
+
+**Fields:**
+- `userId`: `string` - Firebase Auth UID (same as document ID)
+- `handle`: `string` - User's display name/handle (unique, used for player search)
+- `createdAt`: `number` - Timestamp when handle was created (milliseconds since epoch)
+- `updatedAt`: `number` - Timestamp when handle was last updated
+
 #### **matches**
 Match metadata and completion tracking. Document ID is the `matchId` (not stored as a field).
 
@@ -197,7 +211,7 @@ Match metadata and completion tracking. Document ID is the `matchId` (not stored
 - `rulesConfig`: `{ cupCount: 6 | 10, gameType: '1v1' | '2v2' }` - Game configuration
 - `participants`: `Array<{ userId?: string, handle: string, side: 0 | 1, isCaptain?: boolean }>` - Player list
   - `side`: `0` = team1 (top), `1` = team2 (bottom)
-  - `userId`: Optional, reserved for Firebase Auth integration
+  - `userId`: Optional Firebase Auth UID for authenticated users
 - `startedAt`: `Timestamp` - Match start time (server timestamp)
 - `endedAt`: `Timestamp | null` - Match end time (only set when match completes)
 - `winningSide`: `0 | 1 | undefined` - Winning team (only set when match completes)
@@ -211,8 +225,8 @@ Top-level collection for analytics. Each document represents a single made shot 
 **Fields:**
 - `shotId`: `string` - Unique identifier (UUID v4, same as `eventId`)
 - `matchId`: `string` - Reference to match document
-- `userId?`: `string` - Reserved for Firebase Auth (will replace `playerHandle` when auth is implemented)
-- `playerHandle`: `string` - Player identifier (current system, mapped to players in UI)
+- `userId?`: `string` - Firebase Auth user ID (optional, for authenticated users)
+- `playerHandle`: `string` - Player display name/handle (stored in Firestore `users` collection)
 - `cupIndex`: `number` - Standard cup mapping (0-5 for 6-cup, 0-9 for 10-cup)
 - `timestamp`: `number` - Milliseconds since epoch (for chronological ordering)
 - `isBounce`: `boolean` - Whether this was a bounce shot
@@ -248,13 +262,11 @@ The app uses an event-sourcing architecture where:
 
 - **Tournament Mode**: Bracket organization and progress tracking
 - **Stats Engine**: Efficiency metrics, clutch factor, cup isolation heatmaps
-- **User Authentication**: Firebase Auth integration with user profiles
 - **Advanced Analytics**: Shot patterns, win probability, player rankings
 
 ## ⚠️ Known Limitations
 
 - **No Offline Mode**: Requires Firebase connection for data persistence
-- **No User Accounts**: Currently uses player handles (authentication pending)
 - **No Tournament Support**: Only ad-hoc games supported (tournament mode pending)
 - **Web Limitations**: Some native features may not work in web build
 
