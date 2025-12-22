@@ -1,6 +1,6 @@
 # Red Cup - Development Workbook
 
-**Last Updated**: 2025-12-07 (Updated with Firebase integration and bug fixes)
+**Last Updated**: 2025-12-07 (Updated with Firebase integration, bug fixes, and README improvements)
 
 This workbook consolidates development planning, code review findings, and refactoring progress for the Red Cup beer pong analytics app.
 
@@ -290,7 +290,7 @@ The Red Cup codebase is functional and well-documented, but there are opportunit
 - ✅ Visual beer pong table with clickable cup formations
 - ✅ Real-time timer tracking
 - ✅ Cup sink recording with player attribution
-- ✅ Shot type tracking (Regular, Bounce, Grenade - grenade coming soon)
+- ✅ Shot type tracking (Regular, Bounce, Grenade - fully implemented)
 - ✅ Table rotation (180° rotation)
 - ✅ Pause/Resume game functionality
 - ✅ Undo functionality
@@ -309,6 +309,7 @@ The Red Cup codebase is functional and well-documented, but there are opportunit
 #### Firebase Integration Fixes
 
 1. **Multiple Match Creation Fix**
+
    - Added `matchInitializedRef` guard in `GameScreen.tsx` to prevent duplicate match creation
    - Prevents issues from React Strict Mode remounts or component lifecycle issues
    - Ensures only one match is created per game session
@@ -415,7 +416,7 @@ The Red Cup codebase is functional and well-documented, but there are opportunit
   - [ ] _Clutch Factor_: Performance on the final cup or "Rebuttals/Redemptions"
   - [ ] _Cup Isolation_: Which specific cups a player hits most often
 - [ ] **User Profiles**: User profile creation to enable stats and tournaments
-- [ ] **Grenade Feature**: Complete implementation of grenade shot tracking (currently disabled)
+- [x] **Grenade Feature**: Complete implementation of grenade shot tracking (✅ implemented)
 - [ ] **Accessibility Features**:
   - [ ] Add `accessibilityLabel` to interactive elements
   - [ ] Add `accessibilityRole` where appropriate
@@ -424,8 +425,8 @@ The Red Cup codebase is functional and well-documented, but there are opportunit
 
 #### 7. Code Organization (Low Priority)
 
-- [ ] Create `src/hooks/` directory for custom hooks
-- [ ] Create `src/components/game/` for game-specific components
+- [x] Create `src/hooks/` directory for custom hooks ✅
+- [x] Create `src/components/game/` for game-specific components ✅
 - [ ] Organize by feature rather than by type
 - [ ] Consider feature-based folder structure
 - [ ] Refactor to useReducer for complex state
@@ -440,6 +441,8 @@ The Red Cup codebase is functional and well-documented, but there are opportunit
 - **Code Refactoring**: ✅ Types, utilities, and constants extracted
 - **Component Breakdown**: ✅ Complete (custom hooks and sub-components extracted)
 - **Backend Integration**: ✅ Firebase/Firestore implemented
+- **Grenade Feature**: ✅ Fully implemented (2v2 only)
+- **README Documentation**: ✅ Updated with comprehensive structure and data model
 - **Error Handling**: ⏳ Pending
 - **Testing**: ⏳ Pending
 
@@ -460,8 +463,7 @@ The Red Cup codebase is functional and well-documented, but there are opportunit
 - `src/types/game.ts` - Game type definitions
 - `src/utils/` - Utility functions
 - `src/constants/gameConstants.ts` - Game constants
-- `README.md` - Project documentation
-- `FIREBASE_DATA_MODEL_ANALYSIS.md` - Firebase data model documentation
+- `README.md` - Project documentation (updated with comprehensive structure and data model)
 
 ---
 

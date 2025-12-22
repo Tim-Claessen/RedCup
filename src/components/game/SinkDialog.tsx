@@ -80,10 +80,15 @@ export const SinkDialog: React.FC<SinkDialogProps> = ({
 
         <SegmentedButtons
           value={shotType}
-          onValueChange={(value) => onShotTypeChange(value as ShotType)}
+          onValueChange={(value) => {
+            if (value === 'regular' || value === 'bounce' || value === 'grenade') {
+              onShotTypeChange(value);
+            }
+          }}
           buttons={[
             { value: 'regular', label: 'Regular' },
             { value: 'bounce', label: 'Bounce' },
+            ...(gameType === '2v2' ? [{ value: 'grenade', label: 'Grenade' }] : []),
           ]}
           style={styles.shotTypeButtons}
           theme={{
@@ -103,6 +108,15 @@ export const SinkDialog: React.FC<SinkDialogProps> = ({
             Bounce: Select a second cup on opponent's side after recording
           </Text>
         )}
+
+        {shotType === 'grenade' && (
+          <Text
+            variant="bodySmall"
+            style={{ color: theme.colors.onSurfaceVariant, marginTop: DesignSystem.spacing.sm }}
+          >
+            Grenade: Both players hit the same cup. All touching cups will be sunk.
+          </Text>
+        )}
       </Dialog.Content>
       <Dialog.Actions>
         <Button onPress={onDismiss} textColor={theme.colors.onSurface}>
@@ -114,7 +128,7 @@ export const SinkDialog: React.FC<SinkDialogProps> = ({
           mode="contained"
           buttonColor={theme.colors.primary}
         >
-          {shotType === 'bounce' ? 'Continue' : 'Record'}
+          {shotType === 'bounce' ? 'Continue' : shotType === 'grenade' ? 'Record' : 'Record'}
         </Button>
       </Dialog.Actions>
     </Dialog>

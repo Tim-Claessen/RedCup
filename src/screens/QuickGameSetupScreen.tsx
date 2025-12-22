@@ -44,7 +44,7 @@ interface Player {
 
 const QuickGameSetupScreen: React.FC<QuickGameSetupScreenProps> = ({ navigation }) => {
   const theme = useTheme();
-  const [cupCount, setCupCount] = useState<'6' | '10'>('10');
+  const [cupCount, setCupCount] = useState<'6' | '10'>('6');
   const [gameType, setGameType] = useState<'1v1' | '2v2'>('1v1');
   const [team1Players, setTeam1Players] = useState<Player[]>([
     { id: `${Date.now()}-${Math.random()}`, handle: '' },
@@ -61,7 +61,6 @@ const QuickGameSetupScreen: React.FC<QuickGameSetupScreenProps> = ({ navigation 
    */
   useEffect(() => {
     if (gameType === '1v1') {
-      // 1v1: ensure each team has exactly 1 player
       setTeam1Players(prev => {
         if (prev.length > 1) {
           return [prev[0]];
@@ -81,7 +80,6 @@ const QuickGameSetupScreen: React.FC<QuickGameSetupScreenProps> = ({ navigation 
         return prev;
       });
     } else {
-      // 2v2: ensure each team has exactly 2 players
       setTeam1Players(prev => {
         if (prev.length < 2) {
           const newPlayers = [...prev];
@@ -147,8 +145,6 @@ const QuickGameSetupScreen: React.FC<QuickGameSetupScreenProps> = ({ navigation 
       gameType,
     };
 
-    console.log('Starting game with:', matchData);
-    
     // Navigate to game screen with game configuration
     navigation.navigate('Game', {
       cupCount: parseInt(cupCount),
@@ -225,7 +221,11 @@ const QuickGameSetupScreen: React.FC<QuickGameSetupScreenProps> = ({ navigation 
             </Text>
             <SegmentedButtons
               value={gameType}
-              onValueChange={(value) => setGameType(value as '1v1' | '2v2')}
+              onValueChange={(value) => {
+                if (value === '1v1' || value === '2v2') {
+                  setGameType(value);
+                }
+              }}
               buttons={[
                 { value: '1v1', label: '1 vs 1' },
                 { value: '2v2', label: '2 vs 2' },
@@ -251,7 +251,11 @@ const QuickGameSetupScreen: React.FC<QuickGameSetupScreenProps> = ({ navigation 
             </Text>
             <SegmentedButtons
               value={cupCount}
-              onValueChange={(value) => setCupCount(value as '6' | '10')}
+              onValueChange={(value) => {
+                if (value === '6' || value === '10') {
+                  setCupCount(value);
+                }
+              }}
               buttons={[
                 { value: '6', label: '6 Cups' },
                 { value: '10', label: '10 Cups' },

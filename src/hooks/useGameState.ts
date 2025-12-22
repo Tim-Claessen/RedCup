@@ -28,11 +28,11 @@ interface UseGameStateReturn {
 }
 
 export const useGameState = ({ cupCount }: UseGameStateProps): UseGameStateReturn => {
-  // Invert cup IDs: first cup (position 0) gets highest ID (cupCount - 1)
-  // This makes the top cup in the pyramid have the highest number
+  // Use consistent IDs: position index = cup ID (0, 1, 2, ...)
+  // This keeps backend logic consistent with position-based adjacency maps
   const [team1Cups, setTeam1Cups] = useState<Cup[]>(() =>
     getCupPositions(cupCount).map((pos, idx) => ({
-      id: cupCount - 1 - idx, // Inverted: 0 becomes (cupCount-1), last becomes 0
+      id: idx, // Consistent: position 0 = ID 0, position 1 = ID 1, etc.
       sunk: false,
       position: pos,
     }))
@@ -40,7 +40,7 @@ export const useGameState = ({ cupCount }: UseGameStateProps): UseGameStateRetur
 
   const [team2Cups, setTeam2Cups] = useState<Cup[]>(() =>
     getCupPositions(cupCount).map((pos, idx) => ({
-      id: cupCount - 1 - idx, // Inverted: 0 becomes (cupCount-1), last becomes 0
+      id: idx, // Consistent: position 0 = ID 0, position 1 = ID 1, etc.
       sunk: false,
       position: pos,
     }))

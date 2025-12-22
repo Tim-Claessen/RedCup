@@ -7,7 +7,7 @@
     "icon": "./assets/images/RedCup_Logo.png",
     "userInterfaceStyle": "dark",
     "scheme": "redcup",
-    "newArchEnabled": false,
+    "newArchEnabled": true,
     "splash": {
       "image": "./assets/images/RedCup_Logo.png",
       "resizeMode": "contain",

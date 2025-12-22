@@ -18,12 +18,10 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
 
   const handleTournament = () => {
     // TODO: Navigate to Tournament screen
-    console.log('Tournament pressed');
   };
 
   const handleStats = () => {
     // TODO: Navigate to Stats screen
-    console.log('Stats pressed');
   };
 
   return (

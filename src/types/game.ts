@@ -30,6 +30,7 @@ export interface GameEvent {
   isGrenade: boolean;
   isUndone: boolean; // True if this event was undone - simple filter for analytics
   bounceGroupId?: string; // Links bounce shot events together for coordinated undo
+  grenadeGroupId?: string; // Links grenade shot events together for coordinated undo
   team1CupsRemaining: number;
   team2CupsRemaining: number;
   gameState: {

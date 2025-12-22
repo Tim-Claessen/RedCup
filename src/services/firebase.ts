@@ -18,7 +18,6 @@ let db: Firestore | null = null;
 try {
   app = initializeApp(firebaseConfig);
   db = getFirestore(app);
-  console.log('Firebase initialized successfully');
 } catch (error) {
   console.error('Error initializing Firebase:', error);
   // App will continue to work without Firebase (events stored in memory only)

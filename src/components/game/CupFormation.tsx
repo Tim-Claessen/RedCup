@@ -6,7 +6,7 @@
 
 import React from 'react';
 import { View, StyleSheet, TouchableOpacity } from 'react-native';
-import { Text, useTheme } from 'react-native-paper';
+import { Text, useTheme, MD3Theme } from 'react-native-paper';
 import { Cup, TeamId } from '../../types/game';
 import { CUP_SIZE } from '../../constants/gameConstants';
 import { DesignSystem } from '../../theme';
@@ -29,19 +29,19 @@ const renderCupRow = (
   row: number,
   side: TeamId,
   onCupPress: (side: TeamId, cupId: number) => void,
-  theme: any,
+  theme: MD3Theme,
   reverse: boolean = false,
   disabled: boolean = false
 ) => {
   let rowCups = cups.filter(c => c.position.row === row);
   if (rowCups.length === 0) return null;
 
-  // Sort by cup ID (descending for top, ascending for bottom when reversed)
+  // Top side: ascending order, bottom side: descending order (visual symmetry)
   rowCups = [...rowCups].sort((a, b) => {
     if (reverse) {
-      return a.id - b.id; // Ascending for bottom (0, 1, 2...)
+      return b.id - a.id; // Descending for bottom (5, 4, 3, 2, 1, 0)
     } else {
-      return b.id - a.id; // Descending for top (9, 8, 7...)
+      return a.id - b.id; // Ascending for top (0, 1, 2, 3, 4, 5)
     }
   });
 

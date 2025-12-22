@@ -1,10 +1,12 @@
 # Red Cup
 
-A React Native mobile application for Beer Pong analytics and tournament management with a focus on "Moneyball-style" performance tracking.
+A React Native mobile application for Beer Pong analytics and tournament management with "Moneyball-style" performance tracking.
+
+> **Version:** 1.0.0 | **Status:** Active Development
 
 ## 🚀 Tech Stack
 
-- **Framework**: React Native with Expo (~54.0.25)
+- **Framework**: React Native with Expo (~54.0.30)
 - **Language**: TypeScript
 - **UI**: React Native Paper (Material Design 3)
 - **Navigation**: React Navigation (Native Stack)
@@ -25,100 +27,98 @@ A React Native mobile application for Beer Pong analytics and tournament managem
 
 **Key Constraint:** We prioritize speed of play—we ONLY track _made shots_, never misses.
 
-## 🎯 Key Features (MVP)
+### Game Setup
+- 1v1 and 2v2 matches with ad-hoc teams
+- Cup count selection (6 or 10 cups)
+- Player name entry per team
 
-### ✅ Implemented Features
-
-1. **Game Setup:**
-
-   - Support for 1v1 and 2v2 matches (Ad-hoc teams)
-   - Cup count selection (6 or 10 cups)
-   - Player name entry for each team
-   - Game type automatically configures player count
-
-2. **The Input Interface:**
-
+### Game Interface
 - Visual beer pong table with clickable cup formations (pyramid layout)
-- Real-time timer tracking game duration
-- Cup sink recording with player attribution
-- Shot type tracking: Regular, Bounce (with second cup selection)
-- Table rotation for perspective switching (180° rotation)
-- Pause/Resume game functionality
-- Undo functionality for correcting mistakes
-- Bounce shot selection dialog with mirrored cup layout
-- Re-rack support: re-arrange remaining cups into any valid layout within the formation
+- Real-time game timer
+- Shot type tracking: Regular, Bounce, Grenade (2v2 only)
+- Table rotation (180° perspective switching)
+- Pause/Resume functionality
+- Undo with coordinated bounce/grenade group handling
+- Re-rack support for rearranging remaining cups
 
-3. **Game Tracking:**
+### Game Flow
+- Victory detection (last cup or bounce on second-to-last cup)
+- Redemption dialog (Play on / Win)
+- Surrender flow with DNF tracking
+- Automatic player selection for 1v1 games
 
-   - Event sourcing pattern - every cup sink is logged with full game state
-   - Tracks timestamp, player, shot type, and cups remaining
-   - Complete game state snapshots for replay/analytics
-   - Visual feedback for sunk cups
-   - Bounce shots linked via `bounceGroupId` for coordinated undo
-   - UUID-based event IDs for collision prevention
-   - Soft-delete pattern (isUndone flag) for analytics
-
-4. **Game Flow:**
-
-   - Victory condition detection (last cup or bounce on second-to-last cup)
-   - Redemption dialog with "Play on" or "Win" options
-   - Redemption restores last cup(s) without undoing events
-   - Victory overlay with player name and Home button
-   - Automatic player selection for 1v1 games
-- Surrender flow that awards remaining cups to the opponent for scoring only
-- Abandoned games automatically marked as DNF (did not finish) for stats
-
-5. **User Interface:**
-   - Material Design 3 theme (React Native Paper)
-   - Dark theme optimized for low-light gaming environments
-   - Responsive table sizing based on device screen
-   - Intuitive controls and navigation
-   - Web support (React Native Web) for browser testing
-
-6. **Firebase Integration:**
-   - Match persistence to Firestore
-   - Event sourcing with real-time event storage
-   - Match completion tracking with timestamps
-
-### 🚧 Planned Features
-
-- **Tournament Mode:** Bracket organization and progress tracking
-- **Stats Engine:** Efficiency metrics, clutch factor, cup isolation heatmaps
-- **User Profiles & Authentication:** Firebase Auth integration
-- **Grenade Shot Type:** Full implementation (UI present, logic pending)
+### Data & Analytics
+- Event sourcing pattern with full game state snapshots
+- UUID-based event IDs with soft-delete pattern (`isUndone` flag)
+- Real-time Firestore persistence
+- Match completion tracking with timestamps
 
 ## 🏗️ Project Structure
 
 ```text
 RedCup/
 ├── src/
-│   ├── screens/             # Screen components
-│   │   ├── HomeScreen.tsx
-│   │   ├── QuickGameSetupScreen.tsx
-│   │   └── GameScreen.tsx
-│   ├── components/game/     # Game-specific UI components
-│   │   ├── CupFormation.tsx
-│   │   ├── GameTable.tsx
-│   │   ├── SinkDialog.tsx
-│   │   ├── BounceSelectionDialog.tsx
-│   │   ├── RedemptionDialog.tsx
-│   │   ├── VictoryDialog.tsx
-│   │   └── EventsDialog.tsx (dev-only)
-│   ├── services/            # Backend services
-│   │   ├── firebase.ts      # Firebase initialization
-│   │   └── firestoreService.ts  # Firestore operations
-│   ├── hooks/               # Custom React hooks
-│   │   ├── useGameTimer.ts
-│   │   ├── useGameState.ts
-│   │   └── useCupManagement.ts
-│   ├── types/               # TypeScript type definitions
-│   ├── utils/               # Helper functions
-│   ├── constants/           # App constants
-│   └── theme/               # Theme and design system
-├── .secure/                 # Gitignored secrets (Firebase config)
-├── assets/                  # Images and static assets
-├── App.tsx                  # Root component
-└── package.json
+│   ├── screens/                    # Screen components
+│   │   ├── HomeScreen.tsx          # Main entry screen with navigation options
+│   │   ├── QuickGameSetupScreen.tsx # Game configuration (players, cup count, game type)
+│   │   └── GameScreen.tsx          # Main game interface with table and controls
+│   │
+│   ├── components/game/            # Game-specific UI components
+│   │   ├── CupFormation.tsx        # Visual cup pyramid layout with click handlers
+│   │   ├── GameTable.tsx           # Table container with rotation and cup formations
+│   │   ├── SinkDialog.tsx          # Shot type selection and player attribution
+│   │   ├── BounceSelectionDialog.tsx # Second cup selection for bounce shots
+│   │   ├── RedemptionDialog.tsx    # Redemption flow (Play on / Win)
+│   │   ├── VictoryDialog.tsx       # Victory overlay with winner display
+│   │   ├── SurrenderDialog.tsx     # Surrender confirmation and DNF tracking
+│   │   ├── ExitGameDialog.tsx      # Exit confirmation dialog
+│   │   ├── RerackDialog.tsx        # Cup rearrangement interface
+│   │   ├── GameControlsMenu.tsx    # Pause, undo, rerack, exit controls
+│   │   └── EventsDialog.tsx        # Development-only event inspector
+│   │
+│   ├── hooks/                      # Custom React hooks
+│   │   ├── useGameTimer.ts         # Game duration tracking with pause/resume
+│   │   ├── useGameState.ts         # Match initialization and Firestore integration
+│   │   └── useCupManagement.ts     # Cup sink operations, undo, redemption, rerack logic
+│   │
+│   ├── services/                   # Backend services
+│   │   ├── firebase.ts             # Firebase initialization and configuration
+│   │   └── firestoreService.ts     # Firestore operations (matches, made_shots, undo)
+│   │
+│   ├── types/                      # TypeScript type definitions
+│   │   ├── game.ts                 # Game entities (Cup, GameEvent, Player, etc.)
+│   │   └── navigation.ts           # Navigation stack type definitions
+│   │
+│   ├── utils/                      # Helper functions
+│   │   ├── cupPositions.ts         # Cup position calculations for pyramid layouts
+│   │   ├── cupAdjacency.ts         # Adjacent cup detection (for grenade shots)
+│   │   └── timeFormatter.ts        # Game timer display formatting
+│   │
+│   ├── constants/                  # App constants
+│   │   └── gameConstants.ts        # Game rules and configuration constants
+│   │
+│   └── theme/                      # Theme and design system
+│       ├── colors.ts               # Color palette definitions
+│       ├── DesignSystem.ts         # Spacing, typography, border radius constants
+│       ├── RedCupTheme.ts          # Main app theme (Material Design 3)
+│       ├── DuskTheme.ts            # Alternative theme option
+│       └── index.ts               # Theme exports
+│
+├── assets/
+│   ├── images/                     # App icons and logos
+│   │   ├── RedCup_Logo.png
+│   │   └── RedCup_Logo.jpg
+│   └── config/                     # Configuration assets
+│
+├── .secure/                        # Gitignored secrets (Firebase config)
+│
+├── App.tsx                         # Root component (Navigation + Theme setup)
+├── index.ts                       # Expo entry point
+├── app.json                        # Expo configuration
+├── package.json                    # Dependencies and scripts
+├── tsconfig.json                   # TypeScript configuration
+├── dev_workbook.md                 # Development planning and progress tracking
+└── CODING_STANDARDS.md             # Code style guide and best practices
 ```
 
 ## 🛠️ Installation & Setup
@@ -130,85 +130,172 @@ RedCup/
 - Expo Go app (for mobile testing) or iOS Simulator/Android Emulator
 - Firebase project (for data persistence)
 
-### Setup Steps
-
-1. **Clone and install**
-
+1. **Install dependencies**
    ```bash
-   git clone <repository-url>
-   cd RedCup
    npm install
    ```
 
 2. **Configure Firebase**
-   - Create a Firebase project at [Firebase Console](https://console.firebase.google.com)
-   - Get your Firebase config from Project Settings → Your apps → Web app
-   - Create `.secure/firebase.config.ts` (see `.secure/README.md` for template)
-   - The `.secure` folder is gitignored to protect credentials
+   - Create `.secure/firebase.config.ts` with your Firebase config
+   - See `.secure/README.md` for template
 
 3. **Start development server**
-
    ```bash
    npm start
-   # Then press: a (Android), i (iOS), or w (web)
+   # Press: a (Android), i (iOS), or w (web)
    ```
 
-4. **Run on device**
-   - Scan QR code with Expo Go app, or
-   - Use platform-specific commands: `npm run android` | `npm run ios` | `npm run web`
+## 🚀 Quick Start
+
+After setup, the app will open in Expo Go or your simulator. Navigate through:
+1. **Home Screen** → Select "Quick Game"
+2. **Setup Screen** → Configure players, cup count (6 or 10), and game type (1v1 or 2v2)
+3. **Game Screen** → Track shots by tapping cups on the visual table
+
+## 💻 Development
+
+### Available Scripts
+
+- `npm start` - Start Expo development server
+- `npm run android` - Open on Android device/emulator
+- `npm run ios` - Open on iOS simulator
+- `npm run web` - Open in web browser
+
+### Development Workflow
+
+1. **Hot Reloading**: Changes automatically reload in Expo Go
+2. **Debugging**: Use React Native Debugger or Chrome DevTools
+3. **Event Inspection**: Access `EventsDialog` from game controls menu (dev-only feature)
+4. **Firebase Console**: Monitor Firestore collections in real-time at [Firebase Console](https://console.firebase.google.com)
+
+### Architecture Highlights
+
+- **Event Sourcing**: All game state derived from event sequence
+- **Custom Hooks**: Business logic separated into reusable hooks (`useCupManagement`, `useGameState`, `useGameTimer`)
+- **Type Safety**: Full TypeScript coverage with strict type checking
+- **Material Design 3**: Consistent UI via React Native Paper theme system
+
+### Development Documentation
+
+For detailed development information, see:
+- **[`dev_workbook.md`](./dev_workbook.md)** - Development planning, code review findings, refactoring progress, and TODO tracking
+- **[`CODING_STANDARDS.md`](./CODING_STANDARDS.md)** - Code style guide, naming conventions, and best practices
+
+These documents provide comprehensive guidance for contributing to the project.
 
 ## 📊 Data Model
 
-The app uses an **event-sourcing-style** model optimized for analytics and speed of play.  
-We only track **made shots** and derive match state from them.
+Event-sourcing pattern optimized for analytics. Only tracks **made shots**.
 
-### Firestore Collections (v1)
+### Firestore Collections
 
-- **users**  
-  - `userId`: string (document ID)  
-  - `handle`: string  
-  - `createdAt`: Timestamp
+#### **matches**
+Match metadata and completion tracking. Document ID is the `matchId` (not stored as a field).
 
-- **matches**  
-  - `matchId`: string (document ID)  
-  - `tournamentId`: string \| null (reserved for future tournaments)  
-  - `rulesConfig`: `{ cupCount: 6 | 10, gameType: '1v1' | '2v2' }`  
-  - `participants`: `[{ userId?: string, handle: string, side: 0 | 1 }]`  
-  - `startedAt`: Timestamp  
-  - `endedAt`: Timestamp \| null  
-  - `winningSide`: `0 | 1` (team1 / team2)  
-  - `team1Score`: number (cups made by team1)  
-  - `team2Score`: number (cups made by team2)  
-  - `completed`: boolean
+**Fields:**
+- `tournamentId`: `string | null` - Links to tournament (null for ad-hoc games, reserved for future)
+- `rulesConfig`: `{ cupCount: 6 | 10, gameType: '1v1' | '2v2' }` - Game configuration
+- `participants`: `Array<{ userId?: string, handle: string, side: 0 | 1, isCaptain?: boolean }>` - Player list
+  - `side`: `0` = team1 (top), `1` = team2 (bottom)
+  - `userId`: Optional, reserved for Firebase Auth integration
+- `startedAt`: `Timestamp` - Match start time (server timestamp)
+- `endedAt`: `Timestamp | null` - Match end time (only set when match completes)
+- `winningSide`: `0 | 1 | undefined` - Winning team (only set when match completes)
+- `team1Score`: `number | undefined` - Final score - cups made by team1
+- `team2Score`: `number | undefined` - Final score - cups made by team2
+- `completed`: `boolean` - `true` = match finished normally, `false` = DNF (did not finish/abandoned)
 
-- **made_shots** (top-level, analytics-focused)  
-  - **Doc ID**: `shotId` (same as `eventId` in game events)  
-  - `shotId`: string  
-  - `matchId`: string  
-  - `userId?`: string (will replace `playerHandle` once auth is wired)  
-  - `playerHandle`: string (current identifier, mapped to players in UI)  
-  - `cupIndex`: number (standard cup mapping, 0–5 or 0–9)  
-  - `timestamp`: number (ms since epoch)  
-  - `isBounce`: boolean  
-  - `isGrenade`: boolean  
-  - `isRedemption`: boolean  
-  - `isUndone`: boolean (soft-delete / undo)  
-  - `bounceGroupId?`: string (links multi-cup bounce shots)  
-  - `team1CupsRemaining`: number  
-  - `team2CupsRemaining`: number  
+#### **made_shots**
+Top-level collection for analytics. Each document represents a single made shot event. Document ID is the `shotId` (same as `eventId` from game events).
+
+**Fields:**
+- `shotId`: `string` - Unique identifier (UUID v4, same as `eventId`)
+- `matchId`: `string` - Reference to match document
+- `userId?`: `string` - Reserved for Firebase Auth (will replace `playerHandle` when auth is implemented)
+- `playerHandle`: `string` - Player identifier (current system, mapped to players in UI)
+- `cupIndex`: `number` - Standard cup mapping (0-5 for 6-cup, 0-9 for 10-cup)
+- `timestamp`: `number` - Milliseconds since epoch (for chronological ordering)
+- `isBounce`: `boolean` - Whether this was a bounce shot
+- `isGrenade`: `boolean` - Whether this was a grenade shot (2v2 only, sinks target + adjacent cups)
+- `isRedemption`: `boolean` - Auto-calculated: true if shot made when opponent had 0 cups remaining
+- `isUndone`: `boolean` - Soft-delete flag (true = event was undone, filtered out for analytics)
+- `bounceGroupId?`: `string` - Links multi-cup bounce shots together for coordinated undo
+- `grenadeGroupId?`: `string` - Links grenade shot events together (target + all adjacent cups)
+- `team1CupsRemaining`: `number` - Game state snapshot at time of shot
+- `team2CupsRemaining`: `number` - Game state snapshot at time of shot
+
+**Note:** `gameState` (full cup array snapshots) was removed from Firestore documents to reduce storage. Game state can be reconstructed from the event sequence.  
 
 ### Key Design Decisions
 
-- **Only track made shots** (never misses) for speed of play  
-- **Top-level `made_shots` collection** for player career stats and leaderboards  
-- **Soft-delete pattern** (`isUndone` flag) so analytics can ignore undone events without losing history  
-- **UUID-based event IDs** prevent collisions and are reused as `shotId`/document IDs in Firestore  
-- **Bounce shots** linked via `bounceGroupId` for coordinated undo and bounce analytics
+- **Only track made shots** (never misses) - Prioritizes speed of play
+- **Top-level `made_shots` collection** - Enables efficient player stats and leaderboards queries
+- **Soft-delete pattern** (`isUndone` flag) - Preserves full history for analytics while allowing undo
+- **UUID-based event IDs** - Prevents collisions and enables direct document lookup
+- **Document ID = shotId** - No queries needed for individual shot lookups
+- **No gameState in Firestore** - Reduces storage; state can be reconstructed from events
 
-## 📝 Notes
+### Event Sourcing Pattern
 
-- Firebase config stored in `.secure/` folder (gitignored)
-- See `.secure/README.md` for secrets management guide
+The app uses an event-sourcing architecture where:
+1. **Events are immutable** - Once created, events are never modified
+2. **State is derived** - Current game state calculated from event sequence
+3. **Undo via soft-delete** - Events marked `isUndone: true` rather than deleted
+4. **Full history preserved** - All events stored for analytics and replay
+5. **Group coordination** - Bounce/grenade shots linked via `bounceGroupId`/`grenadeGroupId` for atomic undo
+
+## 🔮 Planned Features
+
+- **Tournament Mode**: Bracket organization and progress tracking
+- **Stats Engine**: Efficiency metrics, clutch factor, cup isolation heatmaps
+- **User Authentication**: Firebase Auth integration with user profiles
+- **Advanced Analytics**: Shot patterns, win probability, player rankings
+
+## ⚠️ Known Limitations
+
+- **No Offline Mode**: Requires Firebase connection for data persistence
+- **No User Accounts**: Currently uses player handles (authentication pending)
+- **No Tournament Support**: Only ad-hoc games supported (tournament mode pending)
+- **Web Limitations**: Some native features may not work in web build
+
+## 🔒 Security & Configuration
+
+- **Firebase Config**: Stored in `.secure/firebase.config.ts` (gitignored)
+- **Secrets Management**: See `.secure/README.md` for configuration template
+- **Firestore Rules**: Security rules pending authentication implementation
+- **Environment Variables**: No additional env vars required beyond Firebase config
+
+## 🐛 Troubleshooting
+
+### Common Issues
+
+**Firebase not initialized**
+- Ensure `.secure/firebase.config.ts` exists with valid Firebase config
+- Check Firebase project is active in Firebase Console
+
+**Expo Go connection issues**
+- Ensure device and computer are on same network
+- Try clearing Expo cache: `npx expo start -c`
+
+**TypeScript errors**
+- Run `npm install` to ensure all dependencies are installed
+- Check `tsconfig.json` configuration
+
+**Firestore permission errors**
+- Verify Firestore security rules allow read/write operations
+- Check Firebase project billing status (Blaze plan required for some features)
+
+## 📚 Additional Resources
+
+### External Documentation
+- [Expo Documentation](https://docs.expo.dev/)
+- [React Native Paper](https://callstack.github.io/react-native-paper/)
+- [Firebase Firestore](https://firebase.google.com/docs/firestore)
+- [React Navigation](https://reactnavigation.org/)
+
+### Project Documentation
+- **[Development Workbook](./dev_workbook.md)** - Comprehensive development planning, code review findings, refactoring progress, and feature tracking
+- **[Coding Standards](./CODING_STANDARDS.md)** - Code style guide, naming conventions, TypeScript practices, and React best practices
 
 ## 📄 License
 

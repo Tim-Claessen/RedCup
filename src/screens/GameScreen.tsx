@@ -19,15 +19,11 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Text, Button, useTheme, Dialog, Portal } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { DesignSystem } from '../theme';
-import { GameScreenNavigationProp } from '../types/navigation';
 import { RouteProp } from '@react-navigation/native';
-import { RootStackParamList } from '../types/navigation';
+
+import { createMatch, completeMatch } from '../services/firestoreService';
+import { GameScreenNavigationProp, RootStackParamList } from '../types/navigation';
 import { CupCount, TeamId } from '../types/game';
-import { formatTime } from '../utils/timeFormatter';
-import { useGameTimer } from '../hooks/useGameTimer';
-import { useGameState } from '../hooks/useGameState';
-import { useCupManagement } from '../hooks/useCupManagement';
 import { GameTable } from '../components/game/GameTable';
 import { SinkDialog } from '../components/game/SinkDialog';
 import { BounceSelectionDialog } from '../components/game/BounceSelectionDialog';
@@ -37,7 +33,12 @@ import { EventsDialog } from '../components/game/EventsDialog';
 import { GameControlsMenu } from '../components/game/GameControlsMenu';
 import { SurrenderDialog } from '../components/game/SurrenderDialog';
 import { RerackDialog } from '../components/game/RerackDialog';
-import { createMatch, completeMatch, markMatchAsDNF } from '../services/firestoreService';
+import { ExitGameDialog } from '../components/game/ExitGameDialog';
+import { useGameTimer } from '../hooks/useGameTimer';
+import { useGameState } from '../hooks/useGameState';
+import { useCupManagement } from '../hooks/useCupManagement';
+import { DesignSystem } from '../theme';
+import { formatTime } from '../utils/timeFormatter';
 
 interface GameScreenProps {
   navigation: GameScreenNavigationProp;
@@ -48,15 +49,13 @@ const GameScreen: React.FC<GameScreenProps> = ({ navigation, route }) => {
   const theme = useTheme();
   const { cupCount, team1Players, team2Players, gameType } = route.params;
   
-// ----- Match identity & high-level game flags -----
-// Firebase match ID - created when game starts
   const [matchId, setMatchId] = useState<string | null>(null);
-  const matchInitializedRef = useRef(false); // Prevent multiple match creations
+  const matchInitializedRef = useRef(false);
   const [matchCompleted, setMatchCompleted] = useState(false);
-  const matchCompletedRef = useRef(false); // always holds latest completion state for unmount checks
+  const matchCompletedRef = useRef(false);
+  const dnfAttemptedRef = useRef(false);
   const [isGameOver, setIsGameOver] = useState(false);
 
-// ----- Core hooks: timer + game/cup state -----
   const { elapsedSeconds, isPaused, setIsPaused, togglePause } = useGameTimer();
   const {
     team1Cups,
@@ -71,9 +70,8 @@ const GameScreen: React.FC<GameScreenProps> = ({ navigation, route }) => {
     setWinningTeam,
     team1CupsRemaining,
     team2CupsRemaining,
-  } = useGameState({ cupCount: cupCount as CupCount });
+  } = useGameState({ cupCount });
 
-  // Dialog visibility states
   const [sinkDialogVisible, setSinkDialogVisible] = useState(false);
   const [bounceCupSelectionVisible, setBounceCupSelectionVisible] = useState(false);
   const [redemptionVisible, setRedemptionVisible] = useState(false);
@@ -83,10 +81,12 @@ const GameScreen: React.FC<GameScreenProps> = ({ navigation, route }) => {
   const [eventsVisible, setEventsVisible] = useState(false);
   const [surrenderDialogVisible, setSurrenderDialogVisible] = useState(false);
   const [rerackDialogVisible, setRerackDialogVisible] = useState(false);
+  const [exitGameDialogVisible, setExitGameDialogVisible] = useState(false);
+  
+  const pendingNavigationRef = useRef<(() => void) | null>(null);
+  const isNavigatingAwayRef = useRef(false);
 
-// ----- Lifecycle: create match on mount -----
   useEffect(() => {
-    // Prevent multiple match creations (e.g., from React Strict Mode or remounts)
     if (matchInitializedRef.current) {
       return;
     }
@@ -96,35 +96,61 @@ const GameScreen: React.FC<GameScreenProps> = ({ navigation, route }) => {
     const initializeMatch = async () => {
       const newMatchId = await createMatch(
         gameType,
-        cupCount as CupCount,
+        cupCount,
         team1Players,
         team2Players
       );
       if (newMatchId) {
         setMatchId(newMatchId);
-        console.log('Match initialized:', newMatchId);
       }
     };
 
     initializeMatch();
-  }, []); // Only run once when component mounts
+  }, []);
 
-// ----- Lifecycle: mark match as DNF on unmount if not completed -----
-// Uses a ref so the cleanup reads the latest completion state even if it changed
-// after this effect was created.
   useEffect(() => {
-    if (!matchId) return;
+    if (matchCompletedRef.current || isGameOver) {
+      return;
+    }
 
-    return () => {
-      if (!matchCompletedRef.current) {
-        markMatchAsDNF(matchId).catch(error => {
-          console.error('Failed to mark match as DNF on unmount:', error);
-        });
+    const unsubscribe = navigation.addListener('beforeRemove', (e) => {
+      if (matchCompletedRef.current || isGameOver) {
+        return;
       }
-    };
-  }, [matchId]);
 
-// ----- Cup management: sinks, undo, redemption, victory -----
+      if (isNavigatingAwayRef.current) {
+        return;
+      }
+
+      e.preventDefault();
+
+      setExitGameDialogVisible(true);
+      
+      pendingNavigationRef.current = () => {
+        setExitGameDialogVisible(false);
+        isNavigatingAwayRef.current = true;
+        navigation.dispatch(e.data.action);
+      };
+    });
+
+    return unsubscribe;
+  }, [navigation, isGameOver]);
+
+  const handleExitGameCancel = () => {
+    setExitGameDialogVisible(false);
+    pendingNavigationRef.current = null;
+  };
+
+  const handleExitGameConfirm = () => {
+    setExitGameDialogVisible(false);
+    isNavigatingAwayRef.current = true;
+    
+    if (pendingNavigationRef.current) {
+      pendingNavigationRef.current();
+      pendingNavigationRef.current = null;
+    }
+  };
+
   const cupManagement = useCupManagement({
     team1Cups,
     team2Cups,
@@ -150,33 +176,27 @@ const GameScreen: React.FC<GameScreenProps> = ({ navigation, route }) => {
     setSinkDialogVisible(true);
   };
 
-// Handles sink cup confirmation (regular vs bounce)
   const handleSinkCup = () => {
     const isBounce = cupManagement.handleSinkCup();
     
-    // If bounce shot, open bounce cup selection dialog
     if (isBounce) {
       setSinkDialogVisible(false);
       setBounceCupSelectionVisible(true);
       return;
     }
 
-    // Regular shot - close dialog
     setSinkDialogVisible(false);
   };
 
-// Handles bounce cup selection for 2-cup bounce shots
   const handleBounceCupSelect = (bounceCupId: number) => {
     cupManagement.handleBounceCupSelect(bounceCupId);
     setBounceCupSelectionVisible(false);
   };
 
-// Rotates the table view by swapping team positions
   const handleRotateTable = () => {
     setTeam1Side((prev) => (prev === 'bottom' ? 'top' : 'bottom'));
   };
 
-// Handles redemption "Play on" option
   const handleRedemptionPlayOn = () => {
     const lastSink = cupManagement.getLastSinkEvent();
     if (lastSink) {
@@ -184,18 +204,20 @@ const GameScreen: React.FC<GameScreenProps> = ({ navigation, route }) => {
         lastSink.eventIds.includes(e.eventId) && !e.isUndone
       );
       
-      // Check if this was a bounce shot
       const isBounce = eventsToCheck.some(e => e.isBounce && e.bounceGroupId);
+      const isGrenade = eventsToCheck.some(e => e.isGrenade && e.grenadeGroupId);
       
       if (isBounce && eventsToCheck.length === 2) {
-        // For bounce: restore only the first cup (the one that triggered the bounce)
-        // The second cup (selected in bounce menu) stays sunk
-        // Use the first cupId from the lastSink (the original cup that was clicked)
+        // Bounce: restore only first cup (trigger cup), second cup stays sunk (game rule)
+        if (lastSink.cupIds.length > 0) {
+          cupManagement.restoreCups([lastSink.cupIds[0]]);
+        }
+      } else if (isGrenade) {
+        // Grenade: restore only clicked cup, touching cups stay sunk (game rule)
         if (lastSink.cupIds.length > 0) {
           cupManagement.restoreCups([lastSink.cupIds[0]]);
         }
       } else {
-        // Regular shot: restore the cup(s)
         cupManagement.restoreCups(lastSink.cupIds);
       }
     }
@@ -203,13 +225,10 @@ const GameScreen: React.FC<GameScreenProps> = ({ navigation, route }) => {
     setWinningTeam(null);
   };
 
-// Handles redemption "Win" option
   const handleRedemptionWin = () => {
-    // Store winning team before clearing state
     const currentWinningTeam = winningTeam;
     
     setRedemptionVisible(false);
-    // Show victory overlay with winning player name
     const winningPlayers = currentWinningTeam === 'team1' 
       ? team1Players.map(p => p.handle).join(' & ')
       : team2Players.map(p => p.handle).join(' & ');
@@ -219,14 +238,10 @@ const GameScreen: React.FC<GameScreenProps> = ({ navigation, route }) => {
     setIsPaused(true);
     setIsGameOver(true);
     
-    // Mark match as completed in Firestore
     if (matchId && currentWinningTeam) {
       const winningSide: 0 | 1 = currentWinningTeam === 'team1' ? 0 : 1;
 
-      // Compute final scores based on cups made by each team.
-      // Each team starts with `cupCount` cups; a team's score is the number of
-      // opponent cups they have sunk.
-      const totalCups = cupCount as number;
+      const totalCups = cupCount;
       const team1Score = totalCups - team2CupsRemaining;
       const team2Score = totalCups - team1CupsRemaining;
 
@@ -243,8 +258,6 @@ const GameScreen: React.FC<GameScreenProps> = ({ navigation, route }) => {
     }
   };
 
-// Handles surrender flow: losing side concedes and remaining cups are
-// only reflected in the match result (cup state/events stay unchanged).
   const handleSurrender = (surrenderingTeam: TeamId) => {
     if (!matchId) {
       console.warn('Cannot surrender without a matchId');
@@ -300,19 +313,15 @@ const GameScreen: React.FC<GameScreenProps> = ({ navigation, route }) => {
     setSurrenderDialogVisible(false);
   };
 
-// Handles victory dialog "Home" button
   const handleVictoryHome = () => {
     setVictoryVisible(false);
     setVictoriousPlayer('');
     navigation.navigate('Home');
   };
 
-// ----- Derived values for rendering -----
-// Determine opponent cups for bounce selection
   const opponentCups = cupManagement.selectedCup?.side === 'team1' ? team1Cups : team2Cups;
   const opponentSide = cupManagement.selectedCup?.side || 'team1';
 
-  // Human-readable labels for teams based on player handles
   const team1Label =
     team1Players.map(p => p.handle).filter(Boolean).join(' & ') || 'Team 1';
   const team2Label =
@@ -377,6 +386,12 @@ const GameScreen: React.FC<GameScreenProps> = ({ navigation, route }) => {
           team2Label={team2Label}
           onDismiss={() => setSurrenderDialogVisible(false)}
           onSurrender={handleSurrender}
+        />
+
+        <ExitGameDialog
+          visible={exitGameDialogVisible}
+          onDismiss={handleExitGameCancel}
+          onConfirm={handleExitGameConfirm}
         />
 
         <SinkDialog

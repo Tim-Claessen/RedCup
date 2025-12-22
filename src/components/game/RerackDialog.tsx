@@ -51,8 +51,13 @@ export const RerackDialog: React.FC<RerackDialogProps> = ({
   const maxRow = Math.max(...positions.map(p => p.row));
   const rowOrder = Array.from({ length: maxRow + 1 }, (_, i) => i);
 
+  // When a team is selected for reracking, they rearrange the opponent's cups
   const remainingForSelected =
-    selectedSide === 'team1' ? team1Remaining : selectedSide === 'team2' ? team2Remaining : 0;
+    selectedSide === 'team1' ? team2Remaining : selectedSide === 'team2' ? team1Remaining : 0;
+  
+  // The team whose cups are being reracked (opponent of selected team)
+  const rerackedTeam: TeamId | null = 
+    selectedSide === 'team1' ? 'team2' : selectedSide === 'team2' ? 'team1' : null;
 
   const toggleSlot = (index: number) => {
     setSelectedSlots((prev) => {
@@ -85,9 +90,7 @@ export const RerackDialog: React.FC<RerackDialogProps> = ({
           variant="bodyMedium"
           style={{ color: theme.colors.onSurface, marginBottom: DesignSystem.spacing.md }}
         >
-          Choose which side is re-racking and where their remaining cups should go.
-          This changes cup IDs for the remaining cups but does not affect any
-          shots already recorded.
+          Choose which team is re-racking:
         </Text>
 
         {/* Step 1: choose side */}
@@ -133,9 +136,7 @@ export const RerackDialog: React.FC<RerackDialogProps> = ({
               variant="bodySmall"
               style={{ color: theme.colors.onSurfaceVariant, marginBottom: DesignSystem.spacing.sm }}
             >
-              Select {remainingForSelected} slot
-              {remainingForSelected > 1 ? 's' : ''} for the remaining cups on{' '}
-              {selectedSide === 'team1' ? team1Label : team2Label}.
+              {selectedSide === 'team1' ? team1Label : team2Label} is re-racking.
             </Text>
 
             <ScrollView style={{ maxHeight: 260 }} showsVerticalScrollIndicator={false}>
@@ -186,8 +187,8 @@ export const RerackDialog: React.FC<RerackDialogProps> = ({
         </Button>
         <Button
           onPress={() => {
-            if (selectedSide && canConfirm) {
-              onRerack(selectedSide, selectedSlots);
+            if (rerackedTeam && canConfirm) {
+              onRerack(rerackedTeam, selectedSlots);
             }
           }}
           disabled={!canConfirm}
@@ -228,6 +229,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
 });
-
 
 

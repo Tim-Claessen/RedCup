@@ -4,11 +4,30 @@
  * Manages cup sink operations, undo functionality, and redemption logic
  */
 
+// Polyfill for crypto.getRandomValues() - required for uuid package in React Native
+import 'react-native-get-random-values';
+
 import { useState, useEffect, useRef } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { Cup, GameEvent, TeamId, SelectedCup, ShotType, GameType, Player, CupCount } from '../types/game';
-import { CupPosition, getCupPositions } from '../utils/cupPositions';
+
 import { saveGameEvent, markEventAsUndone } from '../services/firestoreService';
+import { Cup, GameEvent, TeamId, SelectedCup, ShotType, GameType, Player, CupCount } from '../types/game';
+import { getCupPositions } from '../utils/cupPositions';
+import { getTouchingCups } from '../utils/cupAdjacency';
+
+/**
+ * Safe UUID generator that works on Android/iOS
+ * Uses uuid package with polyfill, falls back to timestamp-based ID if needed
+ */
+const generateUUID = (): string => {
+  try {
+    return uuidv4();
+  } catch (error) {
+    console.error('UUID generation failed, using fallback:', error);
+    // Fallback: timestamp-based unique ID (not a real UUID but unique enough for our use case)
+    return `id_${Date.now()}_${Math.random().toString(36).substr(2, 9)}_${Math.random().toString(36).substr(2, 9)}`;
+  }
+};
 
 interface UseCupManagementProps {
   team1Cups: Cup[];
@@ -63,10 +82,44 @@ export const useCupManagement = ({
   const [shotType, setShotType] = useState<ShotType>('regular');
   const [selectedBounceCup, setSelectedBounceCup] = useState<number | null>(null);
   
-  // Track which events have been saved to Firebase
   const savedEventIdsRef = useRef<Set<string>>(new Set());
 
-  // When matchId becomes available, save any unsaved events
+  /**
+   * Derives cup state from active (not undone) events
+   * Uses the most recent event's gameState snapshot for accuracy
+   */
+  const deriveCupStateFromEvents = (): { team1Cups: Cup[]; team2Cups: Cup[] } => {
+    const activeEvents = gameEvents
+      .filter(e => !e.isUndone)
+      .sort((a, b) => a.timestamp - b.timestamp);
+
+    if (activeEvents.length === 0) {
+      const initialTeam1Cups: Cup[] = getCupPositions(cupCount).map((pos, idx) => ({
+        id: idx,
+        sunk: false,
+        position: pos,
+      }));
+      const initialTeam2Cups: Cup[] = getCupPositions(cupCount).map((pos, idx) => ({
+        id: idx,
+        sunk: false,
+        position: pos,
+      }));
+      return { team1Cups: initialTeam1Cups, team2Cups: initialTeam2Cups };
+    }
+
+    const mostRecentEvent = activeEvents[activeEvents.length - 1];
+    return {
+      team1Cups: mostRecentEvent.gameState.team1Cups,
+      team2Cups: mostRecentEvent.gameState.team2Cups,
+    };
+  };
+
+  useEffect(() => {
+    const derivedState = deriveCupStateFromEvents();
+    setTeam1Cups(derivedState.team1Cups);
+    setTeam2Cups(derivedState.team2Cups);
+  }, [gameEvents, cupCount]);
+
   useEffect(() => {
     if (matchId && gameEvents.length > 0) {
       const unsavedEvents = gameEvents.filter(
@@ -74,7 +127,6 @@ export const useCupManagement = ({
       );
       
       if (unsavedEvents.length > 0) {
-        console.log(`Saving ${unsavedEvents.length} unsaved events to Firestore (matchId now available)`);
         unsavedEvents.forEach(event => {
           saveGameEvent(matchId, event)
             .then(success => {
@@ -115,14 +167,11 @@ export const useCupManagement = ({
     const cup = cups.find(c => c.id === cupId);
     
     if (!cup || cup.sunk) {
-      return; // Already sunk or invalid
+      return;
     }
 
-    // Allow clicking on either side - the dialog will show correct players
-    // Team 1 players can sink team2 cups, team2 players can sink team1 cups
     setSelectedCup({ side, cupId });
     
-    // Auto-select player for 1v1 games
     if (gameType === '1v1') {
       const players = getAvailablePlayers();
       setSelectedPlayer(players[0] || '');
@@ -135,20 +184,21 @@ export const useCupManagement = ({
 
   /**
    * Records one or more cup sinks with the same timestamp
-   * Used for regular shots and bounce shots (2 cups)
+   * Used for regular shots, bounce shots (2 cups), and grenade shots (target + touching cups)
    * For bounce shots, both cups are recorded at the same timestamp
+   * For grenade shots, target cup + all touching cups are recorded at the same timestamp
    */
   const recordCupSink = (
     cupId: number,
     side: TeamId,
     playerHandle: string,
     isBounce: boolean,
-    bounceCupId: number | null
+    bounceCupId: number | null,
+    isGrenade: boolean = false
   ) => {
     const timestamp = Date.now();
 
-    // Update cup state helper
-    const updateCups = (cups: Cup[], cupIdToUpdate: number, isBounceCup: boolean = false) =>
+    const updateCups = (cups: Cup[], cupIdToUpdate: number, isBounceCup: boolean = false, isGrenadeCup: boolean = false) =>
       cups.map((c) =>
         c.id === cupIdToUpdate
           ? {
@@ -157,7 +207,7 @@ export const useCupManagement = ({
               sunkAt: timestamp,
               sunkBy: playerHandle,
               isBounce: isBounce || isBounceCup,
-              isGrenade: false,
+              isGrenade: isGrenade || isGrenadeCup,
             }
           : c
       );
@@ -165,63 +215,54 @@ export const useCupManagement = ({
     let newTeam1Cups = team1Cups;
     let newTeam2Cups = team2Cups;
 
-    // Sink first cup
     if (side === 'team1') {
-      newTeam1Cups = updateCups(team1Cups, cupId);
+      newTeam1Cups = updateCups(team1Cups, cupId, false, isGrenade);
     } else {
-      newTeam2Cups = updateCups(team2Cups, cupId);
+      newTeam2Cups = updateCups(team2Cups, cupId, false, isGrenade);
     }
 
-    // If bounce, also sink the second cup on the same side (opponent's side)
     if (isBounce && bounceCupId !== null) {
-      // Both cups are on the same side (opponent's side)
       if (side === 'team1') {
-        newTeam1Cups = updateCups(newTeam1Cups, bounceCupId, true);
+        newTeam1Cups = updateCups(newTeam1Cups, bounceCupId, true, false);
       } else {
-        newTeam2Cups = updateCups(newTeam2Cups, bounceCupId, true);
+        newTeam2Cups = updateCups(newTeam2Cups, bounceCupId, true, false);
       }
+    }
+
+    let touchingCupIds: number[] = [];
+    if (isGrenade) {
+      const currentCups = side === 'team1' ? newTeam1Cups : newTeam2Cups;
+      touchingCupIds = getTouchingCups(cupId, cupCount).filter(touchingId => {
+        const touchingCup = currentCups.find(c => c.id === touchingId);
+        return touchingCup && !touchingCup.sunk;
+      });
+
+      touchingCupIds.forEach(touchingCupId => {
+        if (side === 'team1') {
+          newTeam1Cups = updateCups(newTeam1Cups, touchingCupId, false, true);
+        } else {
+          newTeam2Cups = updateCups(newTeam2Cups, touchingCupId, false, true);
+        }
+      });
     }
 
     setTeam1Cups(newTeam1Cups);
     setTeam2Cups(newTeam2Cups);
 
-    // Generate bounce group ID if this is a bounce shot (links both events together)
-    const bounceGroupId = isBounce && bounceCupId !== null ? uuidv4() : undefined;
+    const bounceGroupId = isBounce && bounceCupId !== null ? generateUUID() : undefined;
+    const grenadeGroupId = isGrenade ? generateUUID() : undefined;
 
-    // Record game events - one for first cup, one for second cup if bounce
-    // Only include bounceGroupId in the object if it's defined (not undefined)
-    const firstEvent: GameEvent = {
-      eventId: uuidv4(),
-      timestamp,
-      cupId,
-      playerHandle,
-      isBounce,
-      isGrenade: false,
-      isUndone: false,
-      team1CupsRemaining: newTeam1Cups.filter(c => !c.sunk).length,
-      team2CupsRemaining: newTeam2Cups.filter(c => !c.sunk).length,
-      gameState: {
-        team1Cups: newTeam1Cups,
-        team2Cups: newTeam2Cups,
-      },
-    };
-    
-    // Only add bounceGroupId if it's defined
-    if (bounceGroupId !== undefined) {
-      firstEvent.bounceGroupId = bounceGroupId;
-    }
-    
-    const events: GameEvent[] = [firstEvent];
+    const allCupIds = [cupId, ...(isBounce && bounceCupId !== null ? [bounceCupId] : []), ...(isGrenade ? touchingCupIds : [])];
+    const events: GameEvent[] = [];
 
-    // If bounce, record second cup event with same timestamp and same bounceGroupId
-    if (isBounce && bounceCupId !== null && bounceGroupId) {
-      const secondEvent: GameEvent = {
-        eventId: uuidv4(),
-        timestamp, // Same timestamp for both events
-        cupId: bounceCupId,
+    allCupIds.forEach((eventCupId) => {
+      const event: GameEvent = {
+        eventId: generateUUID(),
+        timestamp,
+        cupId: eventCupId,
         playerHandle,
-        isBounce: true,
-        isGrenade: false,
+        isBounce: isBounce && (eventCupId === cupId || eventCupId === bounceCupId),
+        isGrenade: isGrenade,
         isUndone: false,
         team1CupsRemaining: newTeam1Cups.filter(c => !c.sunk).length,
         team2CupsRemaining: newTeam2Cups.filter(c => !c.sunk).length,
@@ -230,16 +271,20 @@ export const useCupManagement = ({
           team2Cups: newTeam2Cups,
         },
       };
-      
-      // Add bounceGroupId (we know it's defined here because of the if condition)
-      secondEvent.bounceGroupId = bounceGroupId;
-      
-      events.push(secondEvent);
-    }
+
+      if (bounceGroupId !== undefined && (eventCupId === cupId || eventCupId === bounceCupId)) {
+        event.bounceGroupId = bounceGroupId;
+      }
+
+      if (grenadeGroupId !== undefined) {
+        event.grenadeGroupId = grenadeGroupId;
+      }
+
+      events.push(event);
+    });
 
     setGameEvents((prev) => [...prev, ...events]);
 
-    // Save events to Firestore (non-blocking)
     if (matchId) {
       events.forEach(event => {
         saveGameEvent(matchId, event)
@@ -250,24 +295,21 @@ export const useCupManagement = ({
           })
           .catch(error => {
             console.error('Failed to save event to Firestore:', error);
-            // Continue game even if Firestore save fails
           });
       });
     } else {
       console.warn('matchId is null, event will be saved when matchId becomes available:', events[0]?.eventId);
     }
 
-    // Check for victory condition after recording events
     const team1Remaining = newTeam1Cups.filter(c => !c.sunk).length;
     const team2Remaining = newTeam2Cups.filter(c => !c.sunk).length;
     
-    // Victory: last cup sunk OR bounce shot on second-to-last cup (leaves 0 remaining)
+    // Victory: last cup sunk OR bounce shot on second-to-last cup (game rule)
     if (team1Remaining === 0 || team2Remaining === 0) {
       const winner = team1Remaining === 0 ? 'team2' : 'team1';
       onVictory?.(winner);
     }
 
-    // Reset state
     setSelectedCup(null);
     setSelectedPlayer('');
     setSelectedBounceCup(null);
@@ -283,32 +325,26 @@ export const useCupManagement = ({
   const handleSinkCup = (): boolean => {
     if (!selectedCup) return false;
     
-    // For 1v1, player is auto-selected. For 2v2, must be selected
     if (gameType === '2v2' && !selectedPlayer) return false;
 
     const isBounce = shotType === 'bounce';
     const isGrenade = shotType === 'grenade';
 
-    // For grenade shots (temporarily disabled)
-    if (isGrenade) {
-      // Grenade feature temporarily disabled
+    if (isGrenade && isBounce) {
       return false;
     }
 
-    // If bounce shot, return true - caller should open bounce selection dialog
     if (isBounce) {
       return true;
     }
 
-    // Get player - auto-selected for 1v1, manual for 2v2
     const player = gameType === '1v1' 
       ? getAvailablePlayers()[0] 
       : selectedPlayer;
     
     if (!player) return false;
     
-    // Record the single cup sink
-    recordCupSink(selectedCup.cupId, selectedCup.side, player, false, null);
+    recordCupSink(selectedCup.cupId, selectedCup.side, player, false, null, isGrenade);
     return false;
   };
 
@@ -325,46 +361,59 @@ export const useCupManagement = ({
     
     if (!player) return;
 
-    // Both cups are on the opponent's side (the side that was clicked)
-    // Record both cups with same timestamp
     recordCupSink(selectedCup.cupId, selectedCup.side, player, true, bounceCupId);
   };
 
   /**
    * Gets the most recent sunk cup(s) for undo/redemption
-   * If the most recent event is a bounce (has bounceGroupId), find all events with that bounceGroupId
-   * Otherwise, it's a regular shot (just return that one event)
+   * 
+   * Logic:
+   * 1. Get the most recent active (not undone) event
+   * 2. If it's a bounce: find ALL events with the same bounceGroupId (should be 2 events)
+   * 3. If it's a grenade: find ALL events with the same grenadeGroupId (target cup + touching cups)
+   * 4. Otherwise: it's a regular shot (just 1 event)
    */
   const getLastSinkEvent = (): { side: TeamId; cupIds: number[]; eventIds: string[] } | null => {
-    // Get all active (not undone) events, sorted by timestamp (most recent first)
     const activeEvents = gameEvents
       .filter(e => !e.isUndone)
-      .sort((a, b) => b.timestamp - a.timestamp);
+      .sort((a, b) => {
+        if (b.timestamp !== a.timestamp) {
+          return b.timestamp - a.timestamp;
+        }
+        return b.eventId.localeCompare(a.eventId);
+      });
 
     if (activeEvents.length === 0) return null;
 
     const mostRecentEvent = activeEvents[0];
 
-    // If it's a bounce shot, find all events with the same bounceGroupId
     if (mostRecentEvent.isBounce && mostRecentEvent.bounceGroupId) {
-      const bounceEvents = activeEvents.filter(
-        e => e.bounceGroupId === mostRecentEvent.bounceGroupId
+      const matchingEvents = activeEvents.filter(
+        e => e.bounceGroupId === mostRecentEvent.bounceGroupId && e.isBounce
       );
       
-      const cupIds = bounceEvents.map(e => e.cupId);
-      const eventIds = bounceEvents.map(e => e.eventId);
-      
-      // Determine which side - check the first cup
+      const cupIds = matchingEvents.map(e => e.cupId);
+      const eventIds = matchingEvents.map(e => e.eventId);
       const side: TeamId = team1Cups.some(c => c.id === cupIds[0]) ? 'team1' : 'team2';
       
-      return {
-        side,
-        cupIds,
-        eventIds,
-      };
+      return { side, cupIds, eventIds };
     }
 
-    // Regular shot - just return this one event
+    if (mostRecentEvent.isGrenade && mostRecentEvent.grenadeGroupId) {
+      const targetGrenadeGroupId = mostRecentEvent.grenadeGroupId;
+      
+      const matchingEvents = activeEvents.filter(
+        e => e.isGrenade === true 
+          && e.grenadeGroupId === targetGrenadeGroupId
+      );
+      
+      const cupIds = matchingEvents.map(e => e.cupId);
+      const eventIds = matchingEvents.map(e => e.eventId);
+      const side: TeamId = team1Cups.some(c => c.id === cupIds[0]) ? 'team1' : 'team2';
+      
+      return { side, cupIds, eventIds };
+    }
+
     const side: TeamId = team1Cups.some(c => c.id === mostRecentEvent.cupId) ? 'team1' : 'team2';
     return {
       side,
@@ -470,18 +519,12 @@ export const useCupManagement = ({
 
   /**
    * Undoes the most recent cup sink
-   * Marks the original event(s) as undone and restores cup state
-   * For bounce shots (2 events with same timestamp), undoes both cups
-   * For regular shots (1 event), undoes one cup
+   * Simply marks the event(s) as undone - state will be recalculated from events via useEffect
    */
   const handleUndo = () => {
     const lastSink = getLastSinkEvent();
     if (!lastSink || lastSink.eventIds.length === 0) return;
 
-    // Restore the cup(s) - could be 1 (regular) or 2 (bounce)
-    restoreCups(lastSink.cupIds);
-
-    // Mark events as undone
     setGameEvents((prev) =>
       prev.map((event) =>
         lastSink.eventIds.includes(event.eventId)
@@ -490,7 +533,6 @@ export const useCupManagement = ({
       )
     );
 
-    // Update Firestore (non-blocking)
     if (matchId) {
       lastSink.eventIds.forEach(eventId => {
         markEventAsUndone(eventId).catch(error => {

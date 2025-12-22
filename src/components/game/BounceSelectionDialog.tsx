@@ -44,7 +44,6 @@ export const BounceSelectionDialog: React.FC<BounceSelectionDialogProps> = ({
   const opponentIsOnBottom = (opponentSide === 'team1' && team1Side === 'bottom') ||
                              (opponentSide === 'team2' && team1Side === 'top');
   
-  // Create a modified cups array where the first clicked cup appears as sunk
   const cupsWithFirstSunk = opponentCups.map(cup => 
     cup.id === selectedCup.cupId 
       ? { ...cup, sunk: true, sunkAt: Date.now() }
@@ -75,12 +74,13 @@ export const BounceSelectionDialog: React.FC<BounceSelectionDialogProps> = ({
               let rowCups = cupsWithFirstSunk.filter(c => c.position.row === row);
               if (rowCups.length === 0) return null;
               
-              // Sort by cup ID (same logic as renderCupRow)
+              // Top side: ascending (0, 1, 2...) to show [0] [1] [2] / [3] [4] / [5]
+              // Bottom side: descending (5, 4, 3...) to show [5] / [4] [3] / [2] [1] [0]
               rowCups = [...rowCups].sort((a, b) => {
                 if (opponentIsOnBottom) {
-                  return a.id - b.id; // Ascending for bottom
+                  return b.id - a.id; // Descending for bottom (5, 4, 3, 2, 1, 0)
                 } else {
-                  return b.id - a.id; // Descending for top
+                  return a.id - b.id; // Ascending for top (0, 1, 2, 3, 4, 5)
                 }
               });
               

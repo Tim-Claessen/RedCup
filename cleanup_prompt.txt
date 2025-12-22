@@ -1,0 +1,11 @@
+Review the codebase and ensure it follows CODING_STANDARDS.md:
+
+1. **Comments**: Remove obvious comments (explain WHAT), keep ones explaining WHY (business rules, design decisions, workarounds)
+2. **Consistency**: TypeScript (no `any`), imports (grouped correctly), components (one pattern), file structure
+3. **Naming**: camelCase variables/functions, PascalCase types, UPPER_SNAKE_CASE constants
+4. **Best practices**: Remove `as` assertions, fix useEffect deps, remove debug console.log, extract repeated logic
+5. **Cleanup**: Remove commented code, unused imports, trailing blank lines
+
+**Output**: Summary of changes, files modified, and recommendations for future work.
+
+**Rules**: Preserve all functionality. Prioritize consistency.

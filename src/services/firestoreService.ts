@@ -9,19 +9,19 @@ import {
   doc, 
   addDoc, 
   setDoc, 
-  getDoc,
   updateDoc,
   serverTimestamp,
   Firestore,
   CollectionReference,
-  DocumentReference
+  DocumentReference,
+  Timestamp
 } from 'firebase/firestore';
 import { db } from './firebase';
 import { GameEvent } from '../types/game';
 import { GameType, CupCount, Player } from '../types/game';
 
 export interface MatchDocument {
-  matchId: string;
+  // Note: matchId is NOT stored as a field - the MatchID is used as the Firestore document ID
   tournamentId?: string | null; // Links to tournament (null for ad-hoc games)
   rulesConfig: {
     cupCount: CupCount;
@@ -32,18 +32,12 @@ export interface MatchDocument {
     handle: string; // Keep for now until auth is added
     side: 0 | 1; // 0 = team1, 1 = team2
   }>;
-  startedAt: any; // Firestore timestamp
-  endedAt?: any; // Firestore timestamp (nullable, only set when match completes)
+  startedAt: ReturnType<typeof serverTimestamp> | Timestamp;
+  endedAt?: ReturnType<typeof serverTimestamp> | Timestamp;
   winningSide?: 0 | 1; // 0 = team1, 1 = team2 (only set when match completes)
   team1Score?: number; // Final score (cups made by team1)
   team2Score?: number; // Final score (cups made by team2)
-  completed: boolean;
-  /**
-   * Result classification for analytics filtering
-   * - 'completed' = normal finished game (including surrenders/forfeits)
-   * - 'dnf' = did not finish / abandoned mid-game
-   */
-  result?: 'completed' | 'dnf';
+  completed: boolean; // true = match finished normally, false = DNF (did not finish / abandoned)
 }
 
 export interface MadeShotDocument {
@@ -58,6 +52,7 @@ export interface MadeShotDocument {
   isRedemption: boolean; // Was this a clutch save/redemption?
   isUndone: boolean; // Soft-delete flag for analytics
   bounceGroupId?: string; // Links bounce shot events together
+  grenadeGroupId?: string; // Links grenade shot events together
   team1CupsRemaining: number;
   team2CupsRemaining: number;
   // Note: gameState removed - too large, can be reconstructed from events
@@ -95,8 +90,8 @@ export const createMatch = async (
       })),
     ];
     
+    // Document ID is the matchId, so we don't store it as a field
     const matchData: MatchDocument = {
-      matchId,
       tournamentId: null, // Ad-hoc games for now
       rulesConfig: {
         cupCount,
@@ -111,7 +106,6 @@ export const createMatch = async (
     const matchRef = doc(db, 'matches', matchId);
     await setDoc(matchRef, matchData);
 
-    console.log('Match created in Firestore:', matchId);
     return matchId;
   } catch (error) {
     console.error('Error creating match:', error);
@@ -169,12 +163,16 @@ export const saveGameEvent = async (
       madeShot.bounceGroupId = event.bounceGroupId;
     }
 
+    // Only add grenadeGroupId if it is explicitly defined and not null
+    if (event.grenadeGroupId !== undefined && event.grenadeGroupId !== null) {
+      madeShot.grenadeGroupId = event.grenadeGroupId;
+    }
+
     // Use eventId as document ID for direct lookup (no query needed)
     const madeShotsRef = collection(db, 'made_shots');
     const shotRef = doc(madeShotsRef, event.eventId);
     await setDoc(shotRef, madeShot);
 
-    console.log('Made shot saved to Firestore:', event.eventId, 'matchId:', matchId);
     return true;
   } catch (error) {
     console.error('Error saving made shot:', error);
@@ -229,6 +227,11 @@ export const saveGameEvents = async (
         if (event.bounceGroupId !== undefined && event.bounceGroupId !== null) {
           madeShot.bounceGroupId = event.bounceGroupId;
         }
+
+        // Only add grenadeGroupId if it is explicitly defined and not null
+        if (event.grenadeGroupId !== undefined && event.grenadeGroupId !== null) {
+          madeShot.grenadeGroupId = event.grenadeGroupId;
+        }
         
         const shotRef = doc(madeShotsRef, event.eventId);
         batch.set(shotRef, madeShot);
@@ -238,7 +241,6 @@ export const saveGameEvents = async (
     }
 
     await Promise.all(batches);
-    console.log(`Saved ${events.length} made shots to Firestore`);
     return true;
   } catch (error) {
     console.error('Error saving made shots:', error);
@@ -266,13 +268,11 @@ export const completeMatch = async (
     await updateDoc(matchRef, {
       completed: true,
       endedAt: serverTimestamp(),
-      result: 'completed',
       winningSide,
       team1Score,
       team2Score,
     });
 
-    console.log('Match marked as completed:', matchId);
     return true;
   } catch (error) {
     console.error('Error completing match:', error);
@@ -280,31 +280,6 @@ export const completeMatch = async (
   }
 };
 
-/**
- * Marks a match as "Did Not Finish" (DNF) when abandoned
- * Used when the game screen is exited before a normal completion flow.
- */
-export const markMatchAsDNF = async (matchId: string): Promise<boolean> => {
-  if (!db) {
-    console.warn('Firestore not initialized, DNF not saved');
-    return false;
-  }
-
-  try {
-    const matchRef = doc(db, 'matches', matchId);
-    await updateDoc(matchRef, {
-      completed: true,
-      endedAt: serverTimestamp(),
-      result: 'dnf',
-    });
-
-    console.log('Match marked as DNF:', matchId);
-    return true;
-  } catch (error) {
-    console.error('Error marking match as DNF:', error);
-    return false;
-  }
-};
 
 /**
  * Updates a made shot's isUndone flag (for undo functionality)
@@ -328,7 +303,6 @@ export const markEventAsUndone = async (
       isUndone: true,
     });
 
-    console.log('Made shot marked as undone:', eventId);
     return true;
   } catch (error) {
     console.error('Error marking made shot as undone:', error);
