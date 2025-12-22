@@ -26,6 +26,7 @@ export interface GameEvent {
   timestamp: number; // Timestamp for ordering/chronological analysis
   cupId: number;
   playerHandle: string;
+  userId?: string; // Firebase Auth UID if player is logged in
   isBounce: boolean;
   isGrenade: boolean;
   isUndone: boolean; // True if this event was undone - simple filter for analytics
@@ -69,6 +70,7 @@ export type TeamId = 'team1' | 'team2';
  */
 export interface Player {
   handle: string;
+  userId?: string; // Firebase Auth UID if user is logged in
 }
 
 /**

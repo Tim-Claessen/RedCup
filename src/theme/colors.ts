@@ -1,51 +1,49 @@
 /**
  * Red Cup Theme Color Palette
- * A modern, sophisticated dark theme for beer pong analytics
- * Orange used sparingly as an accent for highlights and important moments
- * Following Material Design 3 color system principles
+ * A modern dark theme following Material Design 3 principles
+ * Deep Ink background with Electric Cyan primary and Arcade Purple secondary accents
  */
 
 export const RedCupColors = {
   // BASE COLORS
-  // Deep, rich dark background - sophisticated and modern
-  background: '#0A0A0F',
-  onBackground: '#F5F7FA', // Soft off-white for better readability
+  // Deep Ink background - modern and sophisticated
+  background: '#0B0E14',
+  onBackground: '#F8F9FA', // Cool White for primary text readability
 
   // SURFACES
-  // Elevated surfaces with subtle contrast
-  surface: '#151520',
-  onSurface: '#E8EAED',
-  surfaceVariant: '#1F1F2E',
-  onSurfaceVariant: '#9AA0A6',
+  // Steel Grey-Dark for containers, cards, and inputs
+  surface: '#1A1F26',
+  onSurface: '#F8F9FA', // Cool White for primary text on surfaces
+  surfaceVariant: '#232830', // Slightly lighter variant for elevated surfaces
+  onSurfaceVariant: '#94A3B8', // Slate for muted text and secondary info
 
-  // PRIMARY ROLE: SOPHISTICATED SLATE
-  // Use for: Primary actions, navigation, main UI elements
-  primary: '#6B5B95',
-  onPrimary: '#FFFFFF',
-  primaryContainer: '#3D2F4F',
-  onPrimaryContainer: '#D4C5E8',
+  // PRIMARY ROLE: ELECTRIC CYAN
+  // Use for: Primary buttons, main actions, key UI elements
+  primary: '#00D1FF',
+  onPrimary: '#000000', // Black text on bright cyan for contrast
+  primaryContainer: '#0099CC', // Darker cyan for containers
+  onPrimaryContainer: '#FFFFFF', // White text on darker cyan container
 
-  // SECONDARY ROLE: MUTED VIOLET
-  // Use for: Secondary actions, team colors, alternate states
-  secondary: '#5B7FA6',
-  onSecondary: '#FFFFFF',
-  secondaryContainer: '#2A3D52',
-  onSecondaryContainer: '#B8D4F0',
+  // SECONDARY ROLE: ARCADE PURPLE
+  // Use for: Secondary actions, accents, highlights
+  secondary: '#7000FF',
+  onSecondary: '#FFFFFF', // White text on purple
+  secondaryContainer: '#5A00CC', // Darker purple for containers
+  onSecondaryContainer: '#E0B3FF', // Light purple text on darker container
 
-  // ACCENT ROLE: BURNT ORANGE (Used Sparingly)
+  // ACCENT ROLE: ELECTRIC CYAN (same as primary)
   // Use for: Wins, celebrations, critical actions, highlights
-  // This is the "pop" color - use it intentionally and minimally
-  accent: '#D65A31',
-  onAccent: '#FFFFFF',
-  accentContainer: '#431407',
-  onAccentContainer: '#fdba74',
+  accent: '#00D1FF',
+  onAccent: '#000000',
+  accentContainer: '#0099CC',
+  onAccentContainer: '#FFFFFF',
 
-  // TERTIARY ROLE: SOFT AMBER
+  // TERTIARY ROLE: ARCADE PURPLE (same as secondary)
   // Use for: Warnings, pending states, subtle highlights
-  tertiary: '#C9A961',
-  onTertiary: '#000000',
-  tertiaryContainer: '#4A3D1F',
-  onTertiaryContainer: '#E8D4A3',
+  tertiary: '#7000FF',
+  onTertiary: '#FFFFFF',
+  tertiaryContainer: '#5A00CC',
+  onTertiaryContainer: '#E0B3FF',
 
   // SUCCESS (for wins, achievements)
   success: '#4CAF50',
@@ -55,8 +53,8 @@ export const RedCupColors = {
 
   // BORDERS & OUTLINES
   // Subtle but visible outlines for dark theme
-  outline: '#3D3D4A',
-  outlineVariant: '#2A2A35',
+  outline: '#2D3440',
+  outlineVariant: '#1F252D',
 
   // ERROR
   error: '#CF6679',
@@ -65,14 +63,14 @@ export const RedCupColors = {
   onErrorContainer: '#F8BBD0',
 
   // Additional M3 colors
-  inverseSurface: '#F5F7FA',
-  inverseOnSurface: '#151520',
-  inversePrimary: '#5B7FA6',
+  inverseSurface: '#F8F9FA',
+  inverseOnSurface: '#0B0E14',
+  inversePrimary: '#00D1FF',
   shadow: '#000000',
   scrim: '#000000',
-  surfaceDisabled: '#2A2A35',
-  onSurfaceDisabled: '#5B5B6B',
-  backdrop: 'rgba(10, 10, 15, 0.8)',
+  surfaceDisabled: '#1F252D',
+  onSurfaceDisabled: '#64748B',
+  backdrop: 'rgba(11, 14, 20, 0.8)',
 } as const;
 
 export type RedCupColorsType = typeof RedCupColors;

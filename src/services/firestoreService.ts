@@ -77,16 +77,17 @@ export const createMatch = async (
     const matchId = `match_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     
     // Build participants array with side assignment
+    // Include userId if available
     const participants = [
       ...team1Players.map(p => ({ 
-        handle: p.handle, 
+        handle: p.handle,
+        userId: p.userId, // Include userId if player is logged in
         side: 0 as const, // team1 = side 0
-        isCaptain: false 
       })),
       ...team2Players.map(p => ({ 
-        handle: p.handle, 
+        handle: p.handle,
+        userId: p.userId, // Include userId if player is logged in
         side: 1 as const, // team2 = side 1
-        isCaptain: false 
       })),
     ];
     
@@ -146,7 +147,8 @@ export const saveGameEvent = async (
     const madeShot: MadeShotDocument = {
       shotId: event.eventId, // Use eventId as shotId
       matchId,
-      playerHandle: event.playerHandle || '', // Will become userId when auth is added
+      playerHandle: event.playerHandle || '',
+      userId: event.userId, // Include userId if player is logged in
       cupIndex: event.cupId, // Standard cup mapping (0-9 or 0-5)
       timestamp: event.timestamp,
       isBounce: event.isBounce,
@@ -213,6 +215,7 @@ export const saveGameEvents = async (
           shotId: event.eventId,
           matchId,
           playerHandle: event.playerHandle || '',
+          userId: event.userId, // Include userId if player is logged in
           cupIndex: event.cupId,
           timestamp: event.timestamp,
           isBounce: event.isBounce,

@@ -1,9 +1,10 @@
 import React from 'react';
 import { View, StyleSheet, Image } from 'react-native';
-import { Button, useTheme } from 'react-native-paper';
+import { Button, useTheme, Text, IconButton } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { DesignSystem } from '../theme';
 import { HomeScreenNavigationProp } from '../types/navigation';
+import { useAuth } from '../contexts/AuthContext';
+import { DesignSystem } from '../theme';
 
 interface HomeScreenProps {
   navigation: HomeScreenNavigationProp;
@@ -11,6 +12,7 @@ interface HomeScreenProps {
 
 const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const theme = useTheme();
+  const { user, signOut } = useAuth();
 
   const handleQuickGame = () => {
     navigation.navigate('QuickGameSetup');
@@ -24,13 +26,37 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     // TODO: Navigate to Stats screen
   };
 
+  const handleLogout = async () => {
+    try {
+      await signOut();
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
+  };
+
   return (
     <SafeAreaView 
       style={[styles.container, { backgroundColor: theme.colors.background }]} 
       edges={['top', 'bottom']}
     >
       <View style={styles.content}>
-        {/* Logo - Prominent and always visible */}
+        <View style={styles.header}>
+          {user && (
+            <View style={styles.userInfo}>
+              <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
+                {user.isGuest ? 'Guest' : 'Logged in'} {user.handle && `as ${user.handle}`}
+              </Text>
+            </View>
+          )}
+          <IconButton
+            icon="logout"
+            size={24}
+            iconColor={theme.colors.onSurfaceVariant}
+            onPress={handleLogout}
+            style={styles.logoutButton}
+          />
+        </View>
+
         <View style={styles.logoSection}>
           <Image
             source={require('../../assets/images/RedCup_Logo.png')}
@@ -39,7 +65,6 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
           />
         </View>
 
-        {/* Action Buttons - Minimal, sophisticated design */}
         <View style={styles.actionsContainer}>
           <Button
             mode="contained"
@@ -89,8 +114,20 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'space-between',
     paddingHorizontal: DesignSystem.spacing.lg,
-    paddingTop: DesignSystem.spacing.xxxl,
+    paddingTop: DesignSystem.spacing.md,
     paddingBottom: DesignSystem.spacing.xxl,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: DesignSystem.spacing.md,
+  },
+  userInfo: {
+    flex: 1,
+  },
+  logoutButton: {
+    margin: 0,
   },
   logoSection: {
     flex: 1,
@@ -113,12 +150,12 @@ const styles = StyleSheet.create({
   },
   buttonContent: {
     paddingVertical: DesignSystem.spacing.md,
-    minHeight: 56,
+    minHeight: DesignSystem.dimensions.buttonHeightLarge,
   },
   buttonLabel: {
-    fontSize: 16,
-    fontWeight: '500',
-    letterSpacing: 0.5,
+    fontSize: DesignSystem.typography.labelLarge.fontSize,
+    fontWeight: DesignSystem.typography.labelLarge.fontWeight,
+    letterSpacing: 0.1,
     textTransform: 'none',
   },
 });

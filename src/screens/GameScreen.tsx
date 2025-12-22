@@ -166,7 +166,7 @@ const GameScreen: React.FC<GameScreenProps> = ({ navigation, route }) => {
       setWinningTeam(winner);
       setRedemptionVisible(true);
     },
-    cupCount: cupCount as CupCount,
+    cupCount,
   });
 
 // ----- Event handlers -----
@@ -265,7 +265,7 @@ const GameScreen: React.FC<GameScreenProps> = ({ navigation, route }) => {
       return;
     }
 
-    const totalCups = cupCount as number;
+    const totalCups = cupCount;
 
     // Current scores based on cups already sunk
     const team1ScoreCurrent = totalCups - team2CupsRemaining;
@@ -372,7 +372,7 @@ const GameScreen: React.FC<GameScreenProps> = ({ navigation, route }) => {
           team2Label={team2Label}
           team1Remaining={team1CupsRemaining}
           team2Remaining={team2CupsRemaining}
-          cupCount={cupCount as CupCount}
+          cupCount={cupCount}
           onDismiss={() => setRerackDialogVisible(false)}
           onRerack={(team, slots) => {
             cupManagement.rerackSide(team, slots);

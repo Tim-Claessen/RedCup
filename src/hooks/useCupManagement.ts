@@ -194,7 +194,8 @@ export const useCupManagement = ({
     playerHandle: string,
     isBounce: boolean,
     bounceCupId: number | null,
-    isGrenade: boolean = false
+    isGrenade: boolean = false,
+    userId?: string
   ) => {
     const timestamp = Date.now();
 
@@ -261,6 +262,7 @@ export const useCupManagement = ({
         timestamp,
         cupId: eventCupId,
         playerHandle,
+        userId, // Include userId if player is logged in
         isBounce: isBounce && (eventCupId === cupId || eventCupId === bounceCupId),
         isGrenade: isGrenade,
         isUndone: false,
@@ -344,7 +346,11 @@ export const useCupManagement = ({
     
     if (!player) return false;
     
-    recordCupSink(selectedCup.cupId, selectedCup.side, player, false, null, isGrenade);
+    const allPlayers = [...team1Players, ...team2Players];
+    const playerData = allPlayers.find(p => p.handle === player);
+    const userId = playerData?.userId;
+    
+    recordCupSink(selectedCup.cupId, selectedCup.side, player, false, null, isGrenade, userId);
     return false;
   };
 
@@ -361,7 +367,11 @@ export const useCupManagement = ({
     
     if (!player) return;
 
-    recordCupSink(selectedCup.cupId, selectedCup.side, player, true, bounceCupId);
+    const allPlayers = [...team1Players, ...team2Players];
+    const playerData = allPlayers.find(p => p.handle === player);
+    const userId = playerData?.userId;
+
+    recordCupSink(selectedCup.cupId, selectedCup.side, player, true, bounceCupId, false, userId);
   };
 
   /**
