@@ -17,7 +17,6 @@ import {
 } from 'firebase/auth';
 import { auth } from '../services/firebase';
 import { getUserHandle, createUserHandle } from '../services/userService';
-import { recalculateUserStats } from '../services/firestoreService';
 
 export interface AuthUser {
   uid: string;
@@ -71,13 +70,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           email: firebaseUser.email || undefined,
         };
         setUser(authUser);
-        
-        // Backfill stats for old matches
-        if (handle && !firebaseUser.isAnonymous) {
-          recalculateUserStats(firebaseUser.uid).catch(err => {
-            console.error('Error recalculating stats on login (non-blocking):', err);
-          });
-        }
       } else {
         setUser(null);
       }
