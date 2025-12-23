@@ -178,6 +178,80 @@ export const createUserHandle = async (userId: string, handle: string): Promise<
 };
 
 /**
+ * Checks if a handle exists (exact match, case-insensitive)
+ * Returns the userId and handle if found, null otherwise
+ */
+export const getUserByHandle = async (handle: string): Promise<{ userId: string; handle: string } | null> => {
+  if (!db) {
+    console.warn('Firestore not initialized, cannot check handle');
+    return null;
+  }
+
+  if (!handle || handle.trim() === '') {
+    return null;
+  }
+
+  try {
+    const { collection, query, where, getDocs, limit: limitQuery } = await import('firebase/firestore');
+    const usersRef = collection(db, 'users');
+    const trimmedHandle = handle.trim();
+    const handleLower = trimmedHandle.toLowerCase();
+    
+    // Firestore queries are case-sensitive, so we need to search
+    const firstChar = trimmedHandle[0];
+    const firstCharLower = firstChar.toLowerCase();
+    const firstCharUpper = firstChar.toUpperCase();
+    
+    const queries = [];
+    
+    if (firstCharLower !== firstCharUpper) {
+      queries.push(
+        query(
+          usersRef,
+          where('handle', '>=', firstCharLower),
+          where('handle', '<=', firstCharLower + '\uf8ff'),
+          limitQuery(100)
+        )
+      );
+      queries.push(
+        query(
+          usersRef,
+          where('handle', '>=', firstCharUpper),
+          where('handle', '<=', firstCharUpper + '\uf8ff'),
+          limitQuery(100)
+        )
+      );
+    } else {
+      queries.push(
+        query(
+          usersRef,
+          where('handle', '>=', firstCharLower),
+          where('handle', '<=', firstCharLower + '\uf8ff'),
+          limitQuery(100)
+        )
+      );
+    }
+    
+    // Execute all queries and combine results
+    const snapshots = await Promise.all(queries.map(q => getDocs(q)));
+    
+    for (const snapshot of snapshots) {
+      for (const docSnap of snapshot.docs) {
+        const data = docSnap.data() as UserHandleDocument;
+        if (data.handle.toLowerCase() === handleLower) {
+          return { userId: docSnap.id, handle: data.handle };
+        }
+      }
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('Error checking handle:', error);
+    return null;
+  }
+};
+
+/**
  * Searches for users by handle (for friend selection)
  * Returns array of user IDs and handles matching the search term
  */

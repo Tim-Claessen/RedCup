@@ -15,7 +15,7 @@
  */
 
 import React, { useState, useEffect, useRef } from "react";
-import { View, StyleSheet, ScrollView } from "react-native";
+import { View, StyleSheet, ScrollView, KeyboardAvoidingView, Platform } from "react-native";
 import {
   Text,
   TextInput,
@@ -30,7 +30,7 @@ import {
   ActivityIndicator,
 } from "react-native-paper";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { searchUsersByHandle } from "../services/userService";
+import { searchUsersByHandle, getUserByHandle } from "../services/userService";
 import { QuickGameSetupScreenNavigationProp } from "../types/navigation";
 import { useAuth } from "../contexts/AuthContext";
 import { DesignSystem } from "../theme";
@@ -74,6 +74,14 @@ const QuickGameSetupScreen: React.FC<QuickGameSetupScreenProps> = ({
   >([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Handle validation state - track which players have valid existing handles
+  const [handleValidations, setHandleValidations] = useState<
+    Map<string, { isValid: boolean; userId?: string; handle?: string }>
+  >(new Map());
+  const handleValidationTimeoutRef = useRef<Map<string, NodeJS.Timeout>>(
+    new Map()
+  );
 
   useEffect(() => {
     if (user?.handle && team1Players[0]?.handle === "") {
@@ -162,13 +170,41 @@ const QuickGameSetupScreen: React.FC<QuickGameSetupScreenProps> = ({
     team: 1 | 2,
     playerId: string,
     handle: string,
-    userId?: string
+    userId?: string,
+    clearUserId: boolean = false // Allow clearing userId when manually typing
   ) => {
     const setter = team === 1 ? setTeam1Players : setTeam2Players;
     const players = team === 1 ? team1Players : team2Players;
+
+    // If userId is explicitly provided (from search selection), use it
+    // If clearUserId is true (manual typing), clear userId and revalidate
+    // Otherwise, check validation state
+    let finalUserId = userId;
+    if (clearUserId) {
+      // User is manually typing, clear userId and let validation determine it
+      finalUserId = undefined;
+    } else if (userId === undefined) {
+      // Check validation state for existing valid handle
+      const validation = handleValidations.get(playerId);
+      if (validation?.isValid && validation.userId) {
+        finalUserId = validation.userId;
+        // Use the exact handle from the database (case-sensitive)
+        if (validation.handle) {
+          handle = validation.handle;
+        }
+      }
+    }
+
     setter(
-      players.map((p) => (p.id === playerId ? { ...p, handle, userId } : p))
+      players.map((p) =>
+        p.id === playerId ? { ...p, handle, userId: finalUserId } : p
+      )
     );
+
+    // Trigger validation when manually typing (clearUserId) or when userId not provided
+    if (clearUserId || userId === undefined) {
+      validateHandle(playerId, handle);
+    }
   };
 
   const openUserSearch = (team: 1 | 2, playerId: string) => {
@@ -196,7 +232,9 @@ const QuickGameSetupScreen: React.FC<QuickGameSetupScreenProps> = ({
       setSearchLoading(true);
       try {
         const results = await searchUsersByHandle(query, 10);
-        const filtered = results.filter((r: { userId: string; handle: string }) => r.userId !== user?.uid);
+        const filtered = results.filter(
+          (r: { userId: string; handle: string }) => r.userId !== user?.uid
+        );
         setSearchResults(filtered);
       } catch (error) {
         console.error("Error searching users:", error);
@@ -212,17 +250,122 @@ const QuickGameSetupScreen: React.FC<QuickGameSetupScreenProps> = ({
       if (searchTimeoutRef.current) {
         clearTimeout(searchTimeoutRef.current);
       }
+      // Clear all handle validation timeouts
+      handleValidationTimeoutRef.current.forEach((timeout) =>
+        clearTimeout(timeout)
+      );
+      handleValidationTimeoutRef.current.clear();
     };
   }, []);
 
+  // Validate handle as user types (debounced)
+  const validateHandle = async (playerId: string, handle: string) => {
+    // Clear existing timeout for this player
+    const existingTimeout = handleValidationTimeoutRef.current.get(playerId);
+    if (existingTimeout) {
+      clearTimeout(existingTimeout);
+    }
+
+    const trimmedHandle = handle.trim();
+
+    // If handle is empty or matches logged-in user, skip validation
+    if (trimmedHandle.length === 0) {
+      setHandleValidations((prev) => {
+        const next = new Map(prev);
+        next.delete(playerId);
+        return next;
+      });
+      return;
+    }
+
+    // Debounce validation by 500ms
+    const timeout = setTimeout(async () => {
+      try {
+        // Special case: if this is the logged-in user's handle, it's valid
+        if (
+          user?.handle &&
+          trimmedHandle.toLowerCase() === user.handle.toLowerCase()
+        ) {
+          setHandleValidations((prev) => {
+            const next = new Map(prev);
+            next.set(playerId, {
+              isValid: true,
+              userId: user.uid,
+              handle: user.handle ?? undefined,
+            });
+            return next;
+          });
+          return;
+        }
+
+        const userData = await getUserByHandle(trimmedHandle);
+        setHandleValidations((prev) => {
+          const next = new Map(prev);
+          if (userData) {
+            next.set(playerId, {
+              isValid: true,
+              userId: userData.userId,
+              handle: userData.handle,
+            });
+          } else {
+            next.set(playerId, { isValid: false });
+          }
+          return next;
+        });
+      } catch (error) {
+        console.error("Error validating handle:", error);
+        setHandleValidations((prev) => {
+          const next = new Map(prev);
+          next.set(playerId, { isValid: false });
+          return next;
+        });
+      }
+      handleValidationTimeoutRef.current.delete(playerId);
+    }, 500);
+
+    handleValidationTimeoutRef.current.set(playerId, timeout);
+  };
+
   const selectUser = (selectedUser: { userId: string; handle: string }) => {
     if (!searchingPlayer) return;
+
+    // Set validation state so tick shows up
+    setHandleValidations((prev) => {
+      const next = new Map(prev);
+      next.set(searchingPlayer.playerId, {
+        isValid: true,
+        userId: selectedUser.userId,
+        handle: selectedUser.handle,
+      });
+      return next;
+    });
 
     updatePlayer(
       searchingPlayer.team,
       searchingPlayer.playerId,
       selectedUser.handle,
       selectedUser.userId
+    );
+    setUserSearchVisible(false);
+    setSearchingPlayer(null);
+    setSearchQuery("");
+    setSearchResults([]);
+  };
+
+  const createTemporaryHandle = () => {
+    if (!searchingPlayer) return;
+    const trimmedHandle = searchQuery.trim();
+
+    if (trimmedHandle.length === 0) {
+      return; // Don't create empty handle
+    }
+
+    // Create temporary handle (no userId = temporary)
+    updatePlayer(
+      searchingPlayer.team,
+      searchingPlayer.playerId,
+      trimmedHandle,
+      undefined // No userId = temporary handle
     );
     setUserSearchVisible(false);
     setSearchingPlayer(null);
@@ -247,11 +390,11 @@ const QuickGameSetupScreen: React.FC<QuickGameSetupScreenProps> = ({
       cupCount: parseInt(cupCount),
       team1Players: team1Players.map((p) => ({
         handle: p.handle.trim() || "Guest",
-        userId: p.userId,
+        userId: p.userId, // undefined for temporary handles
       })),
       team2Players: team2Players.map((p) => ({
         handle: p.handle.trim() || "Guest",
-        userId: p.userId,
+        userId: p.userId, // undefined for temporary handles
       })),
       gameType: gameType,
     });
@@ -266,30 +409,67 @@ const QuickGameSetupScreen: React.FC<QuickGameSetupScreenProps> = ({
         >
           {teamName}
         </Text>
-        {players.map((player, index) => (
-          <View key={player.id} style={styles.playerRow}>
-            <TextInput
-              mode="outlined"
-              label={`Player ${index + 1}`}
-              placeholder="Enter name or search..."
-              value={player.handle}
-              onChangeText={(text) => updatePlayer(team, player.id, text)}
-              style={styles.playerInput}
-              contentStyle={styles.inputContent}
-              outlineColor={theme.colors.outline}
-              activeOutlineColor={theme.colors.primary}
-              textColor={theme.colors.onSurface}
-              placeholderTextColor={theme.colors.onSurfaceVariant}
-            />
-            <IconButton
-              icon="account-search"
-              size={24}
-              iconColor={theme.colors.primary}
-              onPress={() => openUserSearch(team, player.id)}
-              style={styles.searchButton}
-            />
-          </View>
-        ))}
+        {players.map((player, index) => {
+          const validation = handleValidations.get(player.id);
+          const isValidUser = validation?.isValid === true;
+          const isInvalidUser = validation?.isValid === false;
+          const hasValidation = validation !== undefined;
+          const showWarning =
+            isInvalidUser && player.handle.trim().length > 0 && !player.userId;
+
+          return (
+            <View key={player.id} style={styles.playerInputContainer}>
+              <View style={styles.playerRow}>
+                <TextInput
+                  mode="outlined"
+                  label={`Player ${index + 1}`}
+                  placeholder="Enter name or search..."
+                  value={player.handle}
+                  onChangeText={(text) => {
+                    // Clear validation state immediately when manually typing
+                    setHandleValidations((prev) => {
+                      const next = new Map(prev);
+                      next.delete(player.id);
+                      return next;
+                    });
+                    // Allow clearing/resetting when manually typing
+                    updatePlayer(team, player.id, text, undefined, true);
+                  }}
+                  style={styles.playerInput}
+                  contentStyle={styles.inputContent}
+                  outlineColor={theme.colors.outline}
+                  activeOutlineColor={theme.colors.primary}
+                  textColor={theme.colors.onSurface}
+                  placeholderTextColor={theme.colors.onSurfaceVariant}
+                  right={
+                    isValidUser ? (
+                      <TextInput.Icon icon="check-circle" />
+                    ) : undefined
+                  }
+                />
+                <IconButton
+                  icon="account-search"
+                  size={24}
+                  iconColor={theme.colors.primary}
+                  onPress={() => openUserSearch(team, player.id)}
+                  style={styles.searchButton}
+                />
+              </View>
+              {showWarning && (
+                <Text
+                  variant="bodySmall"
+                  style={[
+                    styles.validationWarning,
+                    { color: theme.colors.error },
+                  ]}
+                >
+                  User doesn't exist, no player stats will be recorded for this
+                  player.
+                </Text>
+              )}
+            </View>
+          );
+        })}
       </Card.Content>
     </Card>
   );
@@ -299,10 +479,16 @@ const QuickGameSetupScreen: React.FC<QuickGameSetupScreenProps> = ({
       style={[styles.container, { backgroundColor: theme.colors.background }]}
       edges={["top", "bottom"]}
     >
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={styles.keyboardView}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
       >
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
         <View style={styles.header}>
           <Button
             mode="text"
@@ -397,7 +583,8 @@ const QuickGameSetupScreen: React.FC<QuickGameSetupScreenProps> = ({
         >
           Start Game
         </Button>
-      </ScrollView>
+        </ScrollView>
+      </KeyboardAvoidingView>
 
       <Portal>
         <Dialog
@@ -458,15 +645,36 @@ const QuickGameSetupScreen: React.FC<QuickGameSetupScreenProps> = ({
             {!searchLoading &&
               searchQuery.length >= 2 &&
               searchResults.length === 0 && (
-                <Text
-                  variant="bodyMedium"
-                  style={[
-                    styles.noResults,
-                    { color: theme.colors.onSurfaceVariant },
-                  ]}
-                >
-                  No users found
-                </Text>
+                <View style={styles.noResultsContainer}>
+                  <Text
+                    variant="bodyMedium"
+                    style={[
+                      styles.noResults,
+                      { color: theme.colors.onSurfaceVariant },
+                    ]}
+                  >
+                    No users found
+                  </Text>
+                  <Text
+                    variant="bodySmall"
+                    style={[
+                      styles.noResultsHint,
+                      { color: theme.colors.onSurfaceVariant },
+                    ]}
+                  >
+                    Use a temporary handle for this game
+                  </Text>
+                  <Button
+                    mode="outlined"
+                    onPress={createTemporaryHandle}
+                    style={styles.createTemporaryButton}
+                    buttonColor={theme.colors.surfaceVariant}
+                    textColor={theme.colors.onSurfaceVariant}
+                    disabled={searchQuery.trim().length === 0}
+                  >
+                    Use Temporary Handle
+                  </Button>
+                </View>
               )}
           </Dialog.Content>
           <Dialog.Actions>
@@ -489,6 +697,9 @@ const QuickGameSetupScreen: React.FC<QuickGameSetupScreenProps> = ({
 
 const styles = StyleSheet.create({
   container: {
+    flex: 1,
+  },
+  keyboardView: {
     flex: 1,
   },
   scrollContent: {
@@ -517,11 +728,18 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: DesignSystem.spacing.md,
   },
+  playerInputContainer: {
+    marginBottom: DesignSystem.spacing.sm,
+  },
   playerRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: DesignSystem.spacing.sm,
     gap: DesignSystem.spacing.xs,
+  },
+  validationWarning: {
+    marginTop: DesignSystem.spacing.xs,
+    marginLeft: DesignSystem.spacing.sm,
+    fontSize: 12,
   },
   playerInput: {
     flex: 1,
@@ -553,6 +771,18 @@ const styles = StyleSheet.create({
   noResults: {
     padding: DesignSystem.spacing.md,
     textAlign: "center",
+  },
+  noResultsContainer: {
+    alignItems: "center",
+    padding: DesignSystem.spacing.md,
+  },
+  noResultsHint: {
+    marginTop: DesignSystem.spacing.xs,
+    marginBottom: DesignSystem.spacing.md,
+    textAlign: "center",
+  },
+  createTemporaryButton: {
+    marginTop: DesignSystem.spacing.sm,
   },
   inputContent: {
     minHeight: DesignSystem.dimensions.inputHeight,

@@ -70,7 +70,7 @@ const GameScreen: React.FC<GameScreenProps> = ({ navigation, route }) => {
     setWinningTeam,
     team1CupsRemaining,
     team2CupsRemaining,
-  } = useGameState({ cupCount });
+  } = useGameState({ cupCount: cupCount as CupCount });
 
   const [sinkDialogVisible, setSinkDialogVisible] = useState(false);
   const [bounceCupSelectionVisible, setBounceCupSelectionVisible] = useState(false);
@@ -96,7 +96,7 @@ const GameScreen: React.FC<GameScreenProps> = ({ navigation, route }) => {
     const initializeMatch = async () => {
       const newMatchId = await createMatch(
         gameType,
-        cupCount,
+        cupCount as CupCount,
         team1Players,
         team2Players
       );
@@ -166,7 +166,7 @@ const GameScreen: React.FC<GameScreenProps> = ({ navigation, route }) => {
       setWinningTeam(winner);
       setRedemptionVisible(true);
     },
-    cupCount,
+    cupCount: cupCount as CupCount,
   });
 
 // ----- Event handlers -----
@@ -390,7 +390,7 @@ const GameScreen: React.FC<GameScreenProps> = ({ navigation, route }) => {
           team2Label={team2Label}
           team1Remaining={team1CupsRemaining}
           team2Remaining={team2CupsRemaining}
-          cupCount={cupCount}
+          cupCount={cupCount as CupCount}
           onDismiss={() => setRerackDialogVisible(false)}
           onRerack={(team, slots) => {
             cupManagement.rerackSide(team, slots);

@@ -83,18 +83,30 @@ export const createMatch = async (
     const matchId = `match_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     
     // Build participants array with side assignment
-    // Include userId if available
+    // Normalize all guest/temporary players (no userId) to 'Guest' handle
     const participants = [
-      ...team1Players.map(p => ({ 
-        handle: p.handle,
-        userId: p.userId, // Include userId if player is logged in
-        side: 0 as const, // team1 = side 0
-      })),
-      ...team2Players.map(p => ({ 
-        handle: p.handle,
-        userId: p.userId, // Include userId if player is logged in
-        side: 1 as const, // team2 = side 1
-      })),
+      ...team1Players.map(p => {
+        const participant: { handle: string; side: 0; userId?: string } = {
+          handle: p.userId ? p.handle : 'Guest', // Normalize guests to 'Guest'
+          side: 0 as const, // team1 = side 0
+        };
+        // Only include userId if it exists (omit undefined to avoid Firestore error)
+        if (p.userId) {
+          participant.userId = p.userId;
+        }
+        return participant;
+      }),
+      ...team2Players.map(p => {
+        const participant: { handle: string; side: 1; userId?: string } = {
+          handle: p.userId ? p.handle : 'Guest', // Normalize guests to 'Guest'
+          side: 1 as const, // team2 = side 1
+        };
+        // Only include userId if it exists (omit undefined to avoid Firestore error)
+        if (p.userId) {
+          participant.userId = p.userId;
+        }
+        return participant;
+      }),
     ];
     
     const matchData: MatchDocument = {
@@ -144,11 +156,14 @@ export const saveGameEvent = async (
   try {
     const isRedemption = event.team1CupsRemaining === 0 || event.team2CupsRemaining === 0;
     
-    const madeShot: MadeShotDocument = {
+    // Normalize guest players (no userId) to 'Guest' handle
+    const playerHandle = event.userId ? (event.playerHandle || '') : 'Guest';
+    
+    // Build made shot document - conditionally include userId to avoid Firestore undefined error
+    const madeShotBase = {
       shotId: event.eventId,
       matchId,
-      playerHandle: event.playerHandle || '',
-      userId: event.userId,
+      playerHandle,
       cupIndex: event.cupId,
       timestamp: event.timestamp,
       isBounce: event.isBounce,
@@ -158,6 +173,11 @@ export const saveGameEvent = async (
       team1CupsRemaining: event.team1CupsRemaining,
       team2CupsRemaining: event.team2CupsRemaining,
     };
+    
+    // Conditionally add userId only if it exists (omit undefined to avoid Firestore error)
+    const madeShot: MadeShotDocument = event.userId
+      ? { ...madeShotBase, userId: event.userId }
+      : madeShotBase;
     if (event.bounceGroupId !== undefined && event.bounceGroupId !== null) {
       madeShot.bounceGroupId = event.bounceGroupId;
     }
@@ -166,7 +186,7 @@ export const saveGameEvent = async (
         madeShot.grenadeGroupId = event.grenadeGroupId;
       }
 
-      const madeShotsRef = collection(db, 'made_shots');
+    const madeShotsRef = collection(db, 'made_shots');
     const shotRef = doc(madeShotsRef, event.eventId);
     await setDoc(shotRef, madeShot);
 
@@ -206,11 +226,14 @@ export const saveGameEvents = async (
       
       batchEvents.forEach(event => {
         const isRedemption = event.team1CupsRemaining === 0 || event.team2CupsRemaining === 0;
-        const madeShot: MadeShotDocument = {
+        // Normalize guest players (no userId) to 'Guest' handle
+        const playerHandle = event.userId ? (event.playerHandle || '') : 'Guest';
+        
+        // Build made shot document - conditionally include userId to avoid Firestore undefined error
+        const madeShotBase = {
           shotId: event.eventId,
           matchId,
-          playerHandle: event.playerHandle || '',
-          userId: event.userId, // Include userId if player is logged in
+          playerHandle,
           cupIndex: event.cupId,
           timestamp: event.timestamp,
           isBounce: event.isBounce,
@@ -220,6 +243,11 @@ export const saveGameEvents = async (
           team1CupsRemaining: event.team1CupsRemaining,
           team2CupsRemaining: event.team2CupsRemaining,
         };
+        
+        // Conditionally add userId only if it exists (omit undefined to avoid Firestore error)
+        const madeShot: MadeShotDocument = event.userId
+          ? { ...madeShotBase, userId: event.userId }
+          : madeShotBase;
         
         if (event.bounceGroupId !== undefined && event.bounceGroupId !== null) {
           madeShot.bounceGroupId = event.bounceGroupId;
@@ -389,8 +417,9 @@ const updateUserStatsForCompletedMatch = async (
     const cupCount = matchData.rulesConfig.cupCount;
     const comboKey = `${gameType}_${cupCount}` as keyof UserStatsSummaryDocument['byGameTypeAndCupCount'];
 
+    // Only update stats for participants with userId (exclude temporary handles)
     const updatePromises = matchData.participants
-      .filter(p => p.userId)
+      .filter(p => p.userId) // Filter out temporary handles (no userId)
       .map(async (participant) => {
         if (!db) return;
         const userId = participant.userId!;
@@ -959,15 +988,17 @@ export const getUserMatchHistory = async (
       const opponentTeam = userTeam === 0 ? 1 : 0;
       const isWinner = match.winningSide === userTeam;
 
-      // Get opponent handles
+      // Get opponent handles - replace with "Guest" for temporary handles (no userId)
       const opponentParticipants = match.participants.filter(p => p.side === opponentTeam);
-      const opponentHandles = opponentParticipants.map(p => p.handle);
+      const opponentHandles = opponentParticipants.map(p => p.userId ? p.handle : 'Guest');
 
-      // Get partner handle if 2v2
+      // Get partner handle if 2v2 - replace with "Guest" for temporary handles (no userId)
       const partnerParticipants = match.participants.filter(
         p => p.side === userTeam && p.userId !== userId
       );
-      const partnerHandle = partnerParticipants.length > 0 ? partnerParticipants[0].handle : undefined;
+      const partnerHandle = partnerParticipants.length > 0 
+        ? (partnerParticipants[0].userId ? partnerParticipants[0].handle : 'Guest')
+        : undefined;
 
       const userShots = shotsByMatchId.get(match.id) || [];
       const userCupsSunk = userShots.length;
