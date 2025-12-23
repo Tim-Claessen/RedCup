@@ -298,9 +298,8 @@ export const completeMatch = async (
       team2Score,
     });
 
-    const matchDataWithDuration = { ...matchData, durationSeconds };
+    const matchDataWithDuration = { ...matchData, completed: true, durationSeconds };
     
-    // Update user stats summaries (fire and forget - don't block match completion)
     updateUserStatsForCompletedMatch(matchId, matchDataWithDuration, winningSide).catch(err => {
       console.error('Error updating user stats (non-blocking):', err);
     });
@@ -363,7 +362,6 @@ const updateUserStatsForCompletedMatch = async (
     const shotSnapshots = await getDocs(shotQuery);
     const matchShots = shotSnapshots.docs.map(doc => doc.data() as MadeShotDocument);
 
-    // Group shots by userId
     const shotsByUserId = new Map<string, MadeShotDocument[]>();
     matchShots.forEach(shot => {
       if (shot.userId) {
@@ -391,9 +389,8 @@ const updateUserStatsForCompletedMatch = async (
     const cupCount = matchData.rulesConfig.cupCount;
     const comboKey = `${gameType}_${cupCount}` as keyof UserStatsSummaryDocument['byGameTypeAndCupCount'];
 
-    // Update stats for each user who participated
     const updatePromises = matchData.participants
-      .filter(p => p.userId) // Only authenticated users get stats
+      .filter(p => p.userId)
       .map(async (participant) => {
         if (!db) return;
         const userId = participant.userId!;
