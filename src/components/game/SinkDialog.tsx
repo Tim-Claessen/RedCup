@@ -41,13 +41,13 @@ export const SinkDialog: React.FC<SinkDialogProps> = ({
       onDismiss={onDismiss}
       style={{ backgroundColor: theme.colors.surface }}
     >
-      <Dialog.Title>Record Cup Sink</Dialog.Title>
+      <Dialog.Title>Record Shot</Dialog.Title>
       <Dialog.Content>
         {/* Player selection - only for 2v2 games */}
         {gameType === '2v2' && (
           <>
             <Text variant="bodyMedium" style={{ color: theme.colors.onSurface, marginBottom: DesignSystem.spacing.md }}>
-              Who sunk the cup?
+              Player:
             </Text>
             
             <View style={styles.playerSelection}>
@@ -105,7 +105,7 @@ export const SinkDialog: React.FC<SinkDialogProps> = ({
             variant="bodySmall"
             style={{ color: theme.colors.onSurfaceVariant, marginTop: DesignSystem.spacing.sm }}
           >
-            Bounce: Select a second cup on opponent's side after recording
+            Bounce: Select second cup after recording
           </Text>
         )}
 
@@ -114,7 +114,7 @@ export const SinkDialog: React.FC<SinkDialogProps> = ({
             variant="bodySmall"
             style={{ color: theme.colors.onSurfaceVariant, marginTop: DesignSystem.spacing.sm }}
           >
-            Grenade: Both players hit the same cup. All touching cups will be sunk.
+            Grenade: Both players hit same cup. All adjacent cups sunk.
           </Text>
         )}
       </Dialog.Content>
@@ -128,7 +128,7 @@ export const SinkDialog: React.FC<SinkDialogProps> = ({
           mode="contained"
           buttonColor={theme.colors.primary}
         >
-          {shotType === 'bounce' ? 'Continue' : shotType === 'grenade' ? 'Record' : 'Record'}
+          Record
         </Button>
       </Dialog.Actions>
     </Dialog>

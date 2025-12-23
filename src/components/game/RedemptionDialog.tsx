@@ -46,7 +46,7 @@ export const RedemptionDialog: React.FC<RedemptionDialogProps> = ({
       style={{ backgroundColor: theme.colors.surface }}
     >
       <Dialog.Title style={{ textAlign: 'center', fontSize: 32, fontWeight: 'bold' }}>
-        REDEMPTION
+        Redemption
       </Dialog.Title>
       <Dialog.Content>
         <View style={styles.redemptionContent}>
@@ -58,13 +58,13 @@ export const RedemptionDialog: React.FC<RedemptionDialogProps> = ({
             contentStyle={styles.redemptionButtonContent}
             labelStyle={styles.redemptionButtonLabel}
           >
-            {losingPlayers} comes up clutch! Play on
+            {losingPlayers} - Play On
           </Button>
           <Button
             mode="contained"
             onPress={onWin}
             style={styles.redemptionButton}
-            buttonColor={theme.colors.error}
+            buttonColor={theme.colors.error} // Crimson for destructive/win action
             contentStyle={styles.redemptionButtonContent}
             labelStyle={styles.redemptionButtonLabel}
           >

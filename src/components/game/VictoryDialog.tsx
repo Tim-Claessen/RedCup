@@ -29,7 +29,7 @@ export const VictoryDialog: React.FC<VictoryDialogProps> = ({
       style={{ backgroundColor: theme.colors.surface }}
     >
       <Dialog.Title style={{ textAlign: 'center', fontSize: 28, fontWeight: 'bold' }}>
-        {victoriousPlayer} is victorious!
+        Victory: {victoriousPlayer}
       </Dialog.Title>
       <Dialog.Content>
         <View style={styles.victoryContent}>

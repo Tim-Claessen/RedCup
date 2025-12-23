@@ -5,6 +5,7 @@ Review the codebase and ensure it follows CODING_STANDARDS.md:
 3. **Naming**: camelCase variables/functions, PascalCase types, UPPER_SNAKE_CASE constants
 4. **Best practices**: Remove `as` assertions, fix useEffect deps, remove debug console.log, extract repeated logic
 5. **Cleanup**: Remove commented code, unused imports, trailing blank lines
+6. **Branding**: Make sure any newly added UI components are in line with the branding guidelines.
 
 **Output**: Summary of changes, files modified, and recommendations for future work.
 

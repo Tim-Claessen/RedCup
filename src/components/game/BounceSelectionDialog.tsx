@@ -62,10 +62,10 @@ export const BounceSelectionDialog: React.FC<BounceSelectionDialogProps> = ({
       onDismiss={onDismiss}
       style={{ backgroundColor: theme.colors.surface, maxHeight: '80%' }}
     >
-      <Dialog.Title>Select Second Cup (Bounce)</Dialog.Title>
+      <Dialog.Title>Bounce: Select Second Cup</Dialog.Title>
       <Dialog.Content style={{ maxHeight: 400 }}>
         <Text variant="bodyMedium" style={{ color: theme.colors.onSurface, marginBottom: DesignSystem.spacing.md }}>
-          Select the second cup on opponent's side:
+          Select second cup:
         </Text>
         
         <ScrollView style={{ maxHeight: 300 }} showsVerticalScrollIndicator={false}>
@@ -146,7 +146,7 @@ export const BounceSelectionDialog: React.FC<BounceSelectionDialogProps> = ({
           mode="contained"
           buttonColor={theme.colors.primary}
         >
-          Record Both Cups
+          Record
         </Button>
       </Dialog.Actions>
     </Dialog>

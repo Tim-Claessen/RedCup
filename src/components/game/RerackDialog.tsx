@@ -84,13 +84,13 @@ export const RerackDialog: React.FC<RerackDialogProps> = ({
       onDismiss={onDismiss}
       style={{ backgroundColor: theme.colors.surface }}
     >
-      <Dialog.Title>Re-rack Cups</Dialog.Title>
+      <Dialog.Title>Re-rack</Dialog.Title>
       <Dialog.Content>
         <Text
           variant="bodyMedium"
           style={{ color: theme.colors.onSurface, marginBottom: DesignSystem.spacing.md }}
         >
-          Choose which team is re-racking:
+          Select team re-racking:
         </Text>
 
         {/* Step 1: choose side */}
@@ -136,7 +136,7 @@ export const RerackDialog: React.FC<RerackDialogProps> = ({
               variant="bodySmall"
               style={{ color: theme.colors.onSurfaceVariant, marginBottom: DesignSystem.spacing.sm }}
             >
-              {selectedSide === 'team1' ? team1Label : team2Label} is re-racking.
+              {selectedSide === 'team1' ? team1Label : team2Label} re-racking.
             </Text>
 
             <ScrollView style={{ maxHeight: 260 }} showsVerticalScrollIndicator={false}>
@@ -195,7 +195,7 @@ export const RerackDialog: React.FC<RerackDialogProps> = ({
           mode="contained"
           buttonColor={theme.colors.primary}
         >
-          Apply Re-rack
+          Apply
         </Button>
       </Dialog.Actions>
     </Dialog>

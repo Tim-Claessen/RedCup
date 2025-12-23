@@ -16,7 +16,7 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, Platform } from 'react-native';
 import { Text, Button, useTheme, Dialog, Portal } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { RouteProp } from '@react-navigation/native';
@@ -334,9 +334,27 @@ const GameScreen: React.FC<GameScreenProps> = ({ navigation, route }) => {
     >
       {/* Timer */}
       <View style={styles.timerContainer}>
-        <Text variant="headlineMedium" style={{ color: theme.colors.onBackground }}>
-          {formatTime(elapsedSeconds)}
-        </Text>
+        <View style={[styles.timerCard, { 
+          backgroundColor: theme.colors.surface,
+          borderColor: 'rgba(0, 209, 255, 0.3)', // Electric Cyan with opacity
+        }]}>
+          <Text 
+            variant="displaySmall" 
+            style={[
+              styles.timerText,
+              { 
+                color: theme.colors.primary,
+                ...(Platform.OS === 'ios' ? {
+                  textShadowColor: theme.colors.primary,
+                  textShadowOffset: { width: 0, height: 0 },
+                  textShadowRadius: 12,
+                } : {}),
+              }
+            ]}
+          >
+            {formatTime(elapsedSeconds)}
+          </Text>
+        </View>
       </View>
 
       {/* Beer Pong Table */}
@@ -449,13 +467,13 @@ const GameScreen: React.FC<GameScreenProps> = ({ navigation, route }) => {
           onDismiss={() => setRulesVisible(false)}
           style={{ backgroundColor: theme.colors.surface }}
         >
-          <Dialog.Title>Beer Pong Rules</Dialog.Title>
+          <Dialog.Title>Rules</Dialog.Title>
           <Dialog.Content>
             <Text variant="bodyMedium" style={{ color: theme.colors.onSurface, marginBottom: DesignSystem.spacing.sm }}>
-              • Each team takes turns shooting{'\n'}
+              • Teams alternate turns{'\n'}
               • Sink all opponent cups to win{'\n'}
-              • Bounce shots count as 2 cups{'\n'}
-              • Use "Rotate Table" to switch sides
+              • Bounce shots: 2 cups{'\n'}
+              • Rotate table to switch perspective
             </Text>
           </Dialog.Content>
           <Dialog.Actions>
@@ -484,7 +502,31 @@ const styles = StyleSheet.create({
   },
   timerContainer: {
     alignItems: 'center',
-    paddingVertical: DesignSystem.spacing.md,
+    paddingVertical: DesignSystem.spacing.lg,
+    paddingHorizontal: DesignSystem.spacing.md,
+  },
+  timerCard: {
+    paddingHorizontal: DesignSystem.spacing.xl,
+    paddingVertical: DesignSystem.spacing.lg,
+    borderRadius: DesignSystem.borderRadius.xl,
+    borderWidth: 1,
+    // Shadow effects for cyberpunk glow
+    ...Platform.select({
+      ios: {
+        shadowColor: '#00D1FF',
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.4,
+        shadowRadius: 16,
+      },
+      android: {
+        elevation: 8,
+      },
+    }),
+  },
+  timerText: {
+    fontVariant: ['tabular-nums'], // Tabular numbers for perfect alignment per branding.md
+    fontWeight: '600',
+    letterSpacing: 2,
   },
 });
 

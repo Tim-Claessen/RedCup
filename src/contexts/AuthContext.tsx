@@ -17,6 +17,7 @@ import {
 } from 'firebase/auth';
 import { auth } from '../services/firebase';
 import { getUserHandle, createUserHandle } from '../services/userService';
+import { recalculateUserStats } from '../services/firestoreService';
 
 export interface AuthUser {
   uid: string;
@@ -54,7 +55,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Load user handle when auth state changes
   useEffect(() => {
     if (!auth) {
       setLoading(false);
@@ -63,16 +63,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: User | null) => {
       if (firebaseUser) {
-        // User is signed in
         const handle = await getUserHandle(firebaseUser.uid);
-        setUser({
+        const authUser = {
           uid: firebaseUser.uid,
           handle,
           isGuest: firebaseUser.isAnonymous,
           email: firebaseUser.email || undefined,
-        });
+        };
+        setUser(authUser);
+        
+        // Backfill stats for old matches
+        if (handle && !firebaseUser.isAnonymous) {
+          recalculateUserStats(firebaseUser.uid).catch(err => {
+            console.error('Error recalculating stats on login (non-blocking):', err);
+          });
+        }
       } else {
-        // User is signed out
         setUser(null);
       }
       setLoading(false);

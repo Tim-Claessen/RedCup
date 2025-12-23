@@ -28,7 +28,7 @@ export const ExitGameDialog: React.FC<ExitGameDialogProps> = ({
       onDismiss={onDismiss}
       style={{ backgroundColor: theme.colors.surface }}
     >
-      <Dialog.Title>Exit Game?</Dialog.Title>
+      <Dialog.Title>Exit Game</Dialog.Title>
       <Dialog.Content>
         <Text
           variant="bodyMedium"
@@ -37,7 +37,7 @@ export const ExitGameDialog: React.FC<ExitGameDialogProps> = ({
             marginBottom: DesignSystem.spacing.md,
           }}
         >
-          Are you sure you want to abandon the game?
+          Abandon match? Will be recorded as DNF (Did Not Finish).
         </Text>
       </Dialog.Content>
       <Dialog.Actions>

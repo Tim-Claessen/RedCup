@@ -23,7 +23,11 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   };
 
   const handleStats = () => {
-    // TODO: Navigate to Stats screen
+    navigation.navigate('Stats');
+  };
+
+  const handleMatchHistory = () => {
+    navigation.navigate('MatchHistory');
   };
 
   const handleLogout = async () => {
@@ -63,6 +67,15 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
             style={styles.logo}
             resizeMode="contain"
           />
+          <Text 
+            variant="headlineLarge" 
+            style={[
+              styles.brandText,
+              { color: theme.colors.onBackground }
+            ]}
+          >
+            SINK
+          </Text>
         </View>
 
         <View style={styles.actionsContainer}>
@@ -74,10 +87,11 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
             labelStyle={styles.buttonLabel}
             buttonColor={theme.colors.primary}
           >
-            Quick Game
+            New Game
           </Button>
 
-          <Button
+          {/* Tournament button hidden - coming later */}
+          {/* <Button
             mode="contained"
             onPress={handleTournament}
             style={styles.actionButton}
@@ -87,7 +101,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
             textColor={theme.colors.onSurface}
           >
             Tournament
-          </Button>
+          </Button> */}
 
           <Button
             mode="contained"
@@ -99,6 +113,18 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
             textColor={theme.colors.onSurface}
           >
             Stats
+          </Button>
+
+          <Button
+            mode="contained"
+            onPress={handleMatchHistory}
+            style={styles.actionButton}
+            contentStyle={styles.buttonContent}
+            labelStyle={styles.buttonLabel}
+            buttonColor={theme.colors.surfaceVariant}
+            textColor={theme.colors.onSurface}
+          >
+            Match History
           </Button>
         </View>
       </View>
@@ -139,6 +165,13 @@ const styles = StyleSheet.create({
     width: 200,
     height: 200,
     maxWidth: '100%',
+    marginBottom: DesignSystem.spacing.md, // Spacing per branding.md: 1C between logo and text
+  },
+  brandText: {
+    fontWeight: '800',
+    letterSpacing: 2,
+    textTransform: 'uppercase',
+    // Per branding.md: Logo & Brand Headers use Black (900) or Extra Bold (800), All Caps, +0.1em tracking
   },
   actionsContainer: {
     gap: DesignSystem.spacing.md,

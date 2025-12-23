@@ -1,7 +1,8 @@
 /**
- * Red Cup Theme Color Palette
+ * SINK Theme Color Palette - Cyberpunk Noir
  * A modern dark theme following Material Design 3 principles
- * Deep Ink background with Electric Cyan primary and Arcade Purple secondary accents
+ * Color palette aligned with branding.md: Deep Ink background, Electric Cyan primary,
+ * Arcade Purple secondary, and Crimson for destructive actions (use sparingly)
  */
 
 export const RedCupColors = {
@@ -56,8 +57,8 @@ export const RedCupColors = {
   outline: '#2D3440',
   outlineVariant: '#1F252D',
 
-  // ERROR
-  error: '#CF6679',
+  // ERROR / BRAND ALERT (Crimson - use sparingly for destructive actions)
+  error: '#FF3B30', // Crimson - Brand/Alert color per branding.md
   onError: '#FFFFFF',
   errorContainer: '#4A1F28',
   onErrorContainer: '#F8BBD0',

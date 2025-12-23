@@ -316,7 +316,7 @@ const QuickGameSetupScreen: React.FC<QuickGameSetupScreenProps> = ({
             variant="headlineSmall"
             style={{ color: theme.colors.onBackground }}
           >
-            Quick Game Setup
+            Game Setup
           </Text>
           <View style={{ width: 80 }} />
         </View>

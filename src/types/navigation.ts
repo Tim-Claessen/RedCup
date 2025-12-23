@@ -12,6 +12,7 @@ export type RootStackParamList = {
   };
   Tournament: undefined;
   Stats: undefined;
+  MatchHistory: undefined;
 };
 
 export type LoginScreenNavigationProp = NativeStackNavigationProp<
@@ -32,5 +33,10 @@ export type QuickGameSetupScreenNavigationProp = NativeStackNavigationProp<
 export type GameScreenNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
   'Game'
+>;
+
+export type StatsScreenNavigationProp = NativeStackNavigationProp<
+  RootStackParamList,
+  'Stats'
 >;
 

@@ -19,6 +19,8 @@ import LoginScreen from './src/screens/LoginScreen';
 import HomeScreen from './src/screens/HomeScreen';
 import QuickGameSetupScreen from './src/screens/QuickGameSetupScreen';
 import GameScreen from './src/screens/GameScreen';
+import StatsScreen from './src/screens/StatsScreen';
+import MatchHistoryScreen from './src/screens/MatchHistoryScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -48,6 +50,8 @@ function AppNavigator() {
             <Stack.Screen name="Home" component={HomeScreen} />
             <Stack.Screen name="QuickGameSetup" component={QuickGameSetupScreen} />
             <Stack.Screen name="Game" component={GameScreen} />
+            <Stack.Screen name="Stats" component={StatsScreen} />
+            <Stack.Screen name="MatchHistory" component={MatchHistoryScreen} />
           </>
         )}
       </Stack.Navigator>

@@ -3,12 +3,16 @@ import type { MD3Theme } from 'react-native-paper';
 import { RedCupColors } from './colors';
 
 /**
- * Red Cup Theme - Material Design 3 Dark Theme
+ * SINK Theme - Material Design 3 Dark Theme
  * A modern, sophisticated theme for beer pong analytics
- * Orange used sparingly as an accent color
+ * Typography: Inter font family (per branding.md)
+ * Note: Font family defaults to System font. To use Inter, add Inter font files to assets.
  */
 
-// Configure typography following M3 principles
+// Configure typography following M3 principles and branding.md guidelines
+// Brand Headers: Black (900) or Extra Bold (800), All Caps, +0.1em tracking
+// UI Text: Medium (500) or SemiBold (600), Sentence case
+// Data/Stats: Regular (400) or Medium (500) with tabular numbers (tnum)
 const fontConfig = {
   displayLarge: {
     fontFamily: 'System',

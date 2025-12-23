@@ -33,14 +33,13 @@ export const SurrenderDialog: React.FC<SurrenderDialogProps> = ({
       onDismiss={onDismiss}
       style={{ backgroundColor: theme.colors.surface }}
     >
-      <Dialog.Title>Surrender Match</Dialog.Title>
+      <Dialog.Title>Surrender</Dialog.Title>
       <Dialog.Content>
         <Text
           variant="bodyMedium"
           style={{ color: theme.colors.onSurface, marginBottom: DesignSystem.spacing.md }}
         >
-          Who is surrendering? The match will be recorded as a loss for that side,
-          and the remaining cups on their side will be counted as sunk for scoring.
+          Select surrendering team. Match recorded as loss. Remaining cups counted as sunk.
         </Text>
       </Dialog.Content>
       <Dialog.Actions>

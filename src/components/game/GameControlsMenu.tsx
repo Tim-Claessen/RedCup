@@ -113,7 +113,7 @@ export const GameControlsMenu: React.FC<GameControlsMenuProps> = ({
           style={[styles.dialog, { backgroundColor: theme.colors.surface }]}
         >
           <Dialog.Title style={{ color: theme.colors.onSurface }}>
-            Game Controls
+            Controls
           </Dialog.Title>
           <Dialog.ScrollArea style={styles.scrollArea}>
             <ScrollView>
@@ -148,7 +148,7 @@ export const GameControlsMenu: React.FC<GameControlsMenuProps> = ({
                 />
                 <MenuItem
                   icon="shape"
-                  title="Re-rack Cups"
+                  title="Re-rack"
                   onPress={() => handleAction(onShowRerack)}
                   disabled={isGameOver}
                   theme={theme}

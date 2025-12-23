@@ -208,8 +208,8 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
                 style={[styles.subtitle, { color: theme.colors.onSurfaceVariant }]}
               >
                 {user?.isGuest
-                  ? 'Choose a display name that others will see'
-                  : 'Create a handle to identify yourself in games. This is required to continue.'}
+                  ? 'Define your handle'
+                  : 'Create your handle to track your record'}
               </Text>
             </View>
 
@@ -292,14 +292,22 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
               style={styles.logo}
               resizeMode="contain"
             />
-            <Text variant="headlineMedium" style={{ color: theme.colors.onBackground }}>
-              Welcome to Red Cup
+            <Text 
+              variant="headlineLarge" 
+              style={{ 
+                color: theme.colors.onBackground,
+                fontWeight: '800',
+                letterSpacing: 2,
+                textTransform: 'uppercase',
+              }}
+            >
+              SINK
             </Text>
             <Text
               variant="bodyMedium"
               style={[styles.subtitle, { color: theme.colors.onSurfaceVariant }]}
             >
-              {isSignUp ? 'Create an account to get started' : 'Sign in to continue'}
+              {isSignUp ? 'Create your account' : 'Sign in'}
             </Text>
           </View>
 
@@ -513,7 +521,7 @@ const styles = StyleSheet.create({
   logo: {
     width: 100,
     height: 100,
-    marginBottom: DesignSystem.spacing.md,
+    marginBottom: DesignSystem.spacing.md, // Spacing per branding.md: 1C between logo and text (vertical stack)
   },
   subtitle: {
     marginTop: DesignSystem.spacing.sm,

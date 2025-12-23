@@ -1,12 +1,12 @@
 {
   "expo": {
-    "name": "Red Cup",
-    "slug": "redcup",
+    "name": "SINK",
+    "slug": "sink",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/RedCup_Logo.png",
     "userInterfaceStyle": "dark",
-    "scheme": "redcup",
+    "scheme": "sink",
     "newArchEnabled": true,
     "splash": {
       "image": "./assets/images/RedCup_Logo.png",
