@@ -1,4 +1,4 @@
-Review the codebase and ensure it follows CODING_STANDARDS.md:
+Review the codebase and ensure it follows ../coding/CODING_STANDARDS.md:
 
 1. **Comments**: Remove obvious comments (explain WHAT), keep ones explaining WHY (business rules, design decisions, workarounds)
 2. **Consistency**: TypeScript (no `any`), imports (grouped correctly), components (one pattern), file structure
@@ -6,7 +6,7 @@ Review the codebase and ensure it follows CODING_STANDARDS.md:
 4. **Best practices**: Remove `as` assertions, fix useEffect deps, remove debug console.log, extract repeated logic
 5. **Cleanup**: Remove commented code, unused imports, trailing blank lines
 6. **Branding**: Make sure any newly added UI components are in line with the branding guidelines.
-7. **README**: The README file is concise and up to date
+7. **README**: The README file is updated to be concise and up to date
 
 **Output**: Summary of changes, files modified.
 

@@ -75,7 +75,7 @@ try {
     console.error(
       '\n⚠️  Firebase configuration file not found!\n' +
       'Please create .secure/firebase.config.ts with your Firebase credentials.\n' +
-      'See .secure/README.md for setup instructions.\n'
+      'See setup documentation for instructions.\n'
     );
   } else if (errorMessage.includes('configuration not set up')) {
     console.error('\n⚠️  ' + errorMessage + '\n');

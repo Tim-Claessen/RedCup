@@ -1,14 +1,15 @@
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { CupCount, GameType, Player } from './game';
 
 export type RootStackParamList = {
   Login: undefined;
   Home: undefined;
   QuickGameSetup: undefined;
   Game: {
-    cupCount: number;
-    team1Players: Array<{ handle: string; userId?: string }>;
-    team2Players: Array<{ handle: string; userId?: string }>;
-    gameType: '1v1' | '2v2';
+    cupCount: CupCount;
+    team1Players: Player[];
+    team2Players: Player[];
+    gameType: GameType;
   };
   Tournament: undefined;
   Stats: undefined;

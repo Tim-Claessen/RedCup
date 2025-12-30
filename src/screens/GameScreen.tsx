@@ -73,7 +73,7 @@ const GameScreen: React.FC<GameScreenProps> = ({ navigation, route }) => {
     setWinningTeam,
     team1CupsRemaining,
     team2CupsRemaining,
-  } = useGameState({ cupCount: cupCount as CupCount });
+  } = useGameState({ cupCount });
 
   const [sinkDialogVisible, setSinkDialogVisible] = useState(false);
   const [bounceCupSelectionVisible, setBounceCupSelectionVisible] = useState(false);
@@ -99,20 +99,19 @@ const GameScreen: React.FC<GameScreenProps> = ({ navigation, route }) => {
     const initializeMatch = async () => {
       const newMatchId = await createMatch(
         gameType,
-        cupCount as CupCount,
+        cupCount,
         team1Players,
         team2Players
       );
       if (newMatchId) {
         setMatchId(newMatchId);
       } else {
-        // Graceful degradation: game continues without saving
         showInfo('Game started in offline mode. Your progress will be saved when connection is restored.');
       }
     };
 
     initializeMatch();
-  }, []);
+  }, [gameType, cupCount, team1Players, team2Players, showInfo]);
 
   useEffect(() => {
     if (matchCompletedRef.current || isGameOver) {
@@ -172,11 +171,9 @@ const GameScreen: React.FC<GameScreenProps> = ({ navigation, route }) => {
       setWinningTeam(winner);
       setRedemptionVisible(true);
     },
-    cupCount: cupCount as CupCount,
+    cupCount,
   });
 
-// ----- Event handlers -----
-// Handles cup press - opens dialog to record cup sink
   const handleCupPress = (side: TeamId, cupId: number) => {
     cupManagement.handleCupPress(side, cupId);
     setSinkDialogVisible(true);
@@ -257,7 +254,6 @@ const GameScreen: React.FC<GameScreenProps> = ({ navigation, route }) => {
             setMatchCompleted(true);
             matchCompletedRef.current = true;
           } else {
-            // Graceful degradation: match completed locally
             showInfo('Match completed! Results will be saved when connection is restored.');
           }
         })
@@ -270,14 +266,10 @@ const GameScreen: React.FC<GameScreenProps> = ({ navigation, route }) => {
 
   const handleSurrender = (surrenderingTeam: TeamId) => {
     if (!matchId) {
-      // Graceful degradation: can still surrender even without matchId
       console.warn('Cannot save surrender without a matchId (offline mode)');
-      // Continue with surrender flow even without matchId
     }
 
     const totalCups = cupCount;
-
-    // Current scores based on cups already sunk
     const team1ScoreCurrent = totalCups - team2CupsRemaining;
     const team2ScoreCurrent = totalCups - team1CupsRemaining;
 
@@ -297,11 +289,9 @@ const GameScreen: React.FC<GameScreenProps> = ({ navigation, route }) => {
       finalTeam2Score = team2ScoreCurrent;
     }
 
-    // Pause timer and mark end-of-game state
     setIsPaused(true);
     setIsGameOver(true);
 
-    // Show victory dialog with winning team name(s)
     const winningPlayers =
       winningSide === 0
         ? team1Players.map(p => p.handle).join(' & ')
@@ -315,7 +305,6 @@ const GameScreen: React.FC<GameScreenProps> = ({ navigation, route }) => {
           setMatchCompleted(true);
           matchCompletedRef.current = true;
         } else {
-          // Graceful degradation: match completed locally
           showInfo('Match completed! Results will be saved when connection is restored.');
         }
       })
@@ -404,7 +393,7 @@ const GameScreen: React.FC<GameScreenProps> = ({ navigation, route }) => {
           team2Label={team2Label}
           team1Remaining={team1CupsRemaining}
           team2Remaining={team2CupsRemaining}
-          cupCount={cupCount as CupCount}
+          cupCount={cupCount}
           onDismiss={() => setRerackDialogVisible(false)}
           onRerack={(team, slots) => {
             cupManagement.rerackSide(team, slots);
@@ -524,7 +513,6 @@ const styles = StyleSheet.create({
     paddingVertical: DesignSystem.spacing.lg,
     borderRadius: DesignSystem.borderRadius.xl,
     borderWidth: 1,
-    // Shadow effects for cyberpunk glow
     ...Platform.select({
       ios: {
         shadowColor: '#00D1FF',
@@ -538,7 +526,7 @@ const styles = StyleSheet.create({
     }),
   },
   timerText: {
-    fontVariant: ['tabular-nums'], // Tabular numbers for perfect alignment per branding.md
+    fontVariant: ['tabular-nums'], // Tabular numbers for perfect alignment
     fontWeight: '600',
     letterSpacing: 2,
   },

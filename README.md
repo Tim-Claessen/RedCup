@@ -2,7 +2,7 @@
 
 A React Native mobile application for Beer Pong analytics and tournament management with "Moneyball-style" performance tracking. The Strava for Beer Pong.
 
-> **Brand Identity:** See [`branding.md`](./branding.md) for complete brand guidelines, color palette, and voice guidelines.
+> **Brand Identity:** See [`documentation/branding/branding.md`](./documentation/branding/branding.md) for complete brand guidelines, color palette, and voice guidelines.
 
 > **Version:** 1.0.0 | **Status:** Active Development
 
@@ -129,7 +129,11 @@ RedCup/
 ├── package.json                    # Dependencies and scripts
 ├── tsconfig.json                   # TypeScript configuration
 ├── dev_workbook.md                 # Development planning and progress tracking
-└── CODING_STANDARDS.md             # Code style guide and best practices
+└── documentation/                 # Project documentation
+    ├── branding/                  # Brand guidelines
+    ├── coding/                    # Coding standards
+    ├── project/                   # Project documentation
+    └── testing/                   # Testing documentation
 ```
 
 ## 🛠️ Installation & Setup
@@ -194,14 +198,14 @@ After setup, the app will open in Expo Go or your simulator. Navigate through:
   - Offline support with graceful degradation
   - Error boundaries prevent app crashes
   - TODO: Integrate Firebase Crashlytics for production error tracking
-- **Code Quality**: Codebase follows [`CODING_STANDARDS.md`](./CODING_STANDARDS.md) for consistency and maintainability
+- **Code Quality**: Codebase follows [`documentation/coding/CODING_STANDARDS.md`](./documentation/coding/CODING_STANDARDS.md) for consistency and maintainability
 
 ### Development Documentation
 
 For detailed development information, see:
 
 - **[`dev_workbook.md`](./dev_workbook.md)** - Development planning, code review findings, refactoring progress, and TODO tracking
-- **[`CODING_STANDARDS.md`](./CODING_STANDARDS.md)** - Code style guide, naming conventions, and best practices
+- **[`documentation/coding/CODING_STANDARDS.md`](./documentation/coding/CODING_STANDARDS.md)** - Code style guide, naming conventions, and best practices
 
 These documents provide comprehensive guidance for contributing to the project.
 
@@ -337,7 +341,7 @@ The app uses an event-sourcing architecture where:
 ### Project Documentation
 
 - **[Development Workbook](./dev_workbook.md)** - Comprehensive development planning, code review findings, refactoring progress, and feature tracking
-- **[Coding Standards](./CODING_STANDARDS.md)** - Code style guide, naming conventions, TypeScript practices, and React best practices
+- **[Coding Standards](./documentation/coding/CODING_STANDARDS.md)** - Code style guide, naming conventions, TypeScript practices, and React best practices
 
 ## 📄 License
 

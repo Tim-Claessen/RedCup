@@ -5,14 +5,12 @@ import { RedCupColors } from './colors';
 /**
  * SINK Theme - Material Design 3 Dark Theme
  * A modern, sophisticated theme for beer pong analytics
- * Typography: Inter font family (per branding.md)
+ * Typography: Inter font family
  * Note: Font family defaults to System font. To use Inter, add Inter font files to assets.
  */
 
-// Configure typography following M3 principles and branding.md guidelines
-// Brand Headers: Black (900) or Extra Bold (800), All Caps, +0.1em tracking
-// UI Text: Medium (500) or SemiBold (600), Sentence case
-// Data/Stats: Regular (400) or Medium (500) with tabular numbers (tnum)
+// Typography configuration: Brand Headers use Black (900) or Extra Bold (800), All Caps, +0.1em tracking
+// Data/Stats use tabular numbers for perfect alignment
 const fontConfig = {
   displayLarge: {
     fontFamily: 'System',
@@ -129,50 +127,33 @@ export const RedCupTheme: MD3Theme = {
   ...MD3DarkTheme,
   colors: {
     ...MD3DarkTheme.colors,
-    // Base colors
     background: RedCupColors.background,
     onBackground: RedCupColors.onBackground,
-    
-    // Surface colors
     surface: RedCupColors.surface,
     onSurface: RedCupColors.onSurface,
     surfaceVariant: RedCupColors.surfaceVariant,
     onSurfaceVariant: RedCupColors.onSurfaceVariant,
     surfaceDisabled: RedCupColors.surfaceDisabled,
     onSurfaceDisabled: RedCupColors.onSurfaceDisabled,
-    
-    // Primary colors (Sophisticated Slate)
     primary: RedCupColors.primary,
     onPrimary: RedCupColors.onPrimary,
     primaryContainer: RedCupColors.primaryContainer,
     onPrimaryContainer: RedCupColors.onPrimaryContainer,
-    
-    // Secondary colors (Muted Violet)
     secondary: RedCupColors.secondary,
     onSecondary: RedCupColors.onSecondary,
     secondaryContainer: RedCupColors.secondaryContainer,
     onSecondaryContainer: RedCupColors.onSecondaryContainer,
-    
-    // Tertiary colors (Soft Amber)
     tertiary: RedCupColors.tertiary,
     onTertiary: RedCupColors.onTertiary,
-    
-    // Error colors
     error: RedCupColors.error,
     onError: RedCupColors.onError,
     errorContainer: RedCupColors.errorContainer,
     onErrorContainer: RedCupColors.onErrorContainer,
-    
-    // Outline colors
     outline: RedCupColors.outline,
     outlineVariant: RedCupColors.outlineVariant,
-    
-    // Inverse colors
     inverseSurface: RedCupColors.inverseSurface,
     inverseOnSurface: RedCupColors.inverseOnSurface,
     inversePrimary: RedCupColors.inversePrimary,
-    
-    // Other colors
     shadow: RedCupColors.shadow,
     scrim: RedCupColors.scrim,
     backdrop: RedCupColors.backdrop,

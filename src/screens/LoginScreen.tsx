@@ -96,8 +96,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
       showError(err instanceof AppError ? err : errorMessage);
       setLoading(false);
     }
-    // Don't set loading to false here - let the auth state change handle it
-    // This ensures the handle creation screen shows properly
+    // Let auth state change handle loading state to ensure handle creation screen shows properly
   };
 
   const handleSetHandle = async () => {
@@ -542,7 +541,7 @@ const styles = StyleSheet.create({
   logo: {
     width: 100,
     height: 100,
-    marginBottom: DesignSystem.spacing.md, // Spacing per branding.md: 1C between logo and text (vertical stack)
+    marginBottom: DesignSystem.spacing.md, // Spacing: 1C between logo and text (vertical stack)
   },
   subtitle: {
     marginTop: DesignSystem.spacing.sm,

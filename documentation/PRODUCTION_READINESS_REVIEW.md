@@ -552,7 +552,7 @@ Ensure consistent behavior across all platforms.
 **Estimated Effort:** 1-2 days
 
 **Description:**  
-Review and fix all code to ensure 100% compliance with CODING_STANDARDS.md.
+Review and fix all code to ensure 100% compliance with ../coding/CODING_STANDARDS.md.
 
 **Detailed Steps:**
 
@@ -602,7 +602,7 @@ Review and fix all code to ensure 100% compliance with CODING_STANDARDS.md.
 
 **Cursor Prompt:**
 ```
-Review and fix all code to ensure 100% compliance with CODING_STANDARDS.md. Check and fix:
+Review and fix all code to ensure 100% compliance with ../coding/CODING_STANDARDS.md. Check and fix:
 1. Comment quality (remove obvious comments, add business logic explanations)
 2. Import organization (external → services → types → components → constants)
 3. Component patterns (consistent React.FC, proper props interfaces)
@@ -621,7 +621,7 @@ Ensure all code follows the standards exactly.
 **Estimated Effort:** 1 day
 
 **Description:**  
-Ensure all UI text, colors, typography, and messaging align with branding.md guidelines.
+Ensure all UI text, colors, typography, and messaging align with ../branding/branding.md guidelines.
 
 **Detailed Steps:**
 
@@ -632,7 +632,7 @@ Ensure all UI text, colors, typography, and messaging align with branding.md gui
    - Verify use of key phrases ("Every cup counts")
 
 2. **Verify Color Palette**
-   - Check all color usage matches branding.md
+   - Check all color usage matches ../branding/branding.md
    - Verify Cyberpunk Noir palette
    - Check contrast ratios
    - Verify color usage in different contexts
@@ -662,7 +662,7 @@ Ensure all UI text, colors, typography, and messaging align with branding.md gui
 
 **Cursor Prompt:**
 ```
-Verify branding alignment with branding.md. Review and update:
+Verify branding alignment with ../branding/branding.md. Review and update:
 1. All user-facing text to match brand voice (Ruler/Creator archetype, no slang)
 2. Color palette usage (Cyberpunk Noir - verify all colors match)
 3. Typography (Inter font, proper weights, tabular numbers for stats)

@@ -50,6 +50,6 @@ export const debugCheckUserHandle = async (): Promise<void> => {
 
 // Make it available globally for debugging
 if (typeof window !== 'undefined') {
-  (window as any).debugCheckUserHandle = debugCheckUserHandle;
+  (window as typeof window & { debugCheckUserHandle: typeof debugCheckUserHandle }).debugCheckUserHandle = debugCheckUserHandle;
 }
 

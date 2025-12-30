@@ -19,7 +19,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   };
 
   const handleTournament = () => {
-    // TODO: Navigate to Tournament screen
+    // Tournament feature not yet implemented
   };
 
   const handleStats = () => {
@@ -165,13 +165,13 @@ const styles = StyleSheet.create({
     width: 200,
     height: 200,
     maxWidth: '100%',
-    marginBottom: DesignSystem.spacing.md, // Spacing per branding.md: 1C between logo and text
+    marginBottom: DesignSystem.spacing.md, // Spacing: 1C between logo and text
   },
   brandText: {
     fontWeight: '800',
     letterSpacing: 2,
     textTransform: 'uppercase',
-    // Per branding.md: Logo & Brand Headers use Black (900) or Extra Bold (800), All Caps, +0.1em tracking
+    // Logo & Brand Headers use Black (900) or Extra Bold (800), All Caps, +0.1em tracking
   },
   actionsContainer: {
     gap: DesignSystem.spacing.md,
