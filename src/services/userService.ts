@@ -7,6 +7,18 @@
 
 import { doc, getDoc, setDoc, Firestore } from 'firebase/firestore';
 import { db } from './firebase';
+import { 
+  handleFirebaseError, 
+  withRetry, 
+  withErrorHandling, 
+  isOfflineError,
+  logError,
+  Result,
+  success,
+  failure,
+  ErrorCodes
+} from '../utils/errorHandler';
+import { AppError } from '../types/errors';
 
 export interface UserHandleDocument {
   userId: string; // Firebase Auth UID
@@ -17,7 +29,7 @@ export interface UserHandleDocument {
 
 /**
  * Gets a user's handle from Firestore
- * Returns null if handle doesn't exist
+ * Returns null if handle doesn't exist or on error
  */
 export const getUserHandle = async (userId: string): Promise<string | null> => {
   if (!db) {
@@ -25,25 +37,32 @@ export const getUserHandle = async (userId: string): Promise<string | null> => {
     return null;
   }
 
-  try {
-    const userRef = doc(db, 'users', userId);
-    const userSnap = await getDoc(userRef);
-    
-    if (userSnap.exists()) {
-      const data = userSnap.data() as UserHandleDocument;
-      return data.handle || null;
-    }
-    
-    return null;
-  } catch (error) {
-    console.error('Error getting user handle:', error);
+  const result = await withErrorHandling(
+    async () => {
+      const userRef = doc(db, 'users', userId);
+      const userSnap = await getDoc(userRef);
+      
+      if (userSnap.exists()) {
+        const data = userSnap.data() as UserHandleDocument;
+        return data.handle || null;
+      }
+      
+      return null;
+    },
+    'getUserHandle'
+  );
+
+  if (result.success) {
+    return result.data;
+  } else {
+    logError(result.error, 'getUserHandle');
     return null;
   }
 };
 
 /**
  * Checks if a handle is already taken by another user (case-insensitive)
- * Returns true if handle is available, false if taken
+ * Returns true if handle is available, false if taken or on error
  */
 export const isHandleAvailable = async (handle: string, excludeUserId?: string): Promise<boolean> => {
   if (!db) {
@@ -55,73 +74,80 @@ export const isHandleAvailable = async (handle: string, excludeUserId?: string):
     return false;
   }
 
-  try {
-    const { collection, query, where, getDocs, limit: limitQuery } = await import('firebase/firestore');
-    const usersRef = collection(db, 'users');
-    const trimmedHandle = handle.trim();
-    const handleLower = trimmedHandle.toLowerCase();
-    
-    // Firestore queries are case-sensitive, so query both lowercase and uppercase first character
-    const firstChar = trimmedHandle[0];
-    const firstCharLower = firstChar.toLowerCase();
-    const firstCharUpper = firstChar.toUpperCase();
-    
-    const queries = [];
-    
-    if (firstCharLower !== firstCharUpper) {
-      queries.push(
-        query(
-          usersRef,
-          where('handle', '>=', firstCharLower),
-          where('handle', '<=', firstCharLower + '\uf8ff'),
-          limitQuery(100)
-        )
-      );
-      queries.push(
-        query(
-          usersRef,
-          where('handle', '>=', firstCharUpper),
-          where('handle', '<=', firstCharUpper + '\uf8ff'),
-          limitQuery(100)
-        )
-      );
-    } else {
-      queries.push(
-        query(
-          usersRef,
-          where('handle', '>=', firstCharLower),
-          where('handle', '<=', firstCharLower + '\uf8ff'),
-          limitQuery(100)
-        )
-      );
-    }
-    
-    // Execute all queries and combine results
-    const snapshots = await Promise.all(queries.map(q => getDocs(q)));
-    const allDocs = new Map<string, UserHandleDocument>();
-    
-    snapshots.forEach(snapshot => {
-      snapshot.forEach((docSnap) => {
-        const data = docSnap.data() as UserHandleDocument;
-        allDocs.set(docSnap.id, data);
+  const result = await withErrorHandling(
+    async () => {
+      const { collection, query, where, getDocs, limit: limitQuery } = await import('firebase/firestore');
+      const usersRef = collection(db, 'users');
+      const trimmedHandle = handle.trim();
+      const handleLower = trimmedHandle.toLowerCase();
+      
+      // Firestore queries are case-sensitive, so query both lowercase and uppercase first character
+      const firstChar = trimmedHandle[0];
+      const firstCharLower = firstChar.toLowerCase();
+      const firstCharUpper = firstChar.toUpperCase();
+      
+      const queries = [];
+      
+      if (firstCharLower !== firstCharUpper) {
+        queries.push(
+          query(
+            usersRef,
+            where('handle', '>=', firstCharLower),
+            where('handle', '<=', firstCharLower + '\uf8ff'),
+            limitQuery(100)
+          )
+        );
+        queries.push(
+          query(
+            usersRef,
+            where('handle', '>=', firstCharUpper),
+            where('handle', '<=', firstCharUpper + '\uf8ff'),
+            limitQuery(100)
+          )
+        );
+      } else {
+        queries.push(
+          query(
+            usersRef,
+            where('handle', '>=', firstCharLower),
+            where('handle', '<=', firstCharLower + '\uf8ff'),
+            limitQuery(100)
+          )
+        );
+      }
+      
+      // Execute all queries and combine results
+      const snapshots = await Promise.all(queries.map(q => getDocs(q)));
+      const allDocs = new Map<string, UserHandleDocument>();
+      
+      snapshots.forEach(snapshot => {
+        snapshot.forEach((docSnap) => {
+          const data = docSnap.data() as UserHandleDocument;
+          allDocs.set(docSnap.id, data);
+        });
       });
-    });
-    
-    // Check if any existing handle matches (case-insensitive)
-    // Exclude the current user if they're updating their own handle
-    for (const data of allDocs.values()) {
-      if (data.userId === excludeUserId) {
-        continue;
+      
+      // Check if any existing handle matches (case-insensitive)
+      // Exclude the current user if they're updating their own handle
+      for (const data of allDocs.values()) {
+        if (data.userId === excludeUserId) {
+          continue;
+        }
+        if (data.handle.toLowerCase() === handleLower) {
+          return false;
+        }
       }
-      if (data.handle.toLowerCase() === handleLower) {
-        return false;
-      }
-    }
-    
-    return true;
-  } catch (error) {
-    console.error('Error checking handle availability:', error);
-    return false;
+      
+      return true;
+    },
+    'isHandleAvailable'
+  );
+
+  if (result.success) {
+    return result.data;
+  } else {
+    logError(result.error, 'isHandleAvailable');
+    return false; // Conservative: assume handle is taken on error
   }
 };
 
@@ -130,50 +156,76 @@ export const isHandleAvailable = async (handle: string, excludeUserId?: string):
  * Stores the userID:handle mapping in the 'users' collection
  * Validates that the handle is unique (case-insensitive)
  * 
- * @returns true if handle was created successfully, false if handle is taken or error occurred
- * @throws Error with message if handle is already taken
+ * @returns true if handle was created successfully
+ * @throws AppError if handle is already taken or other error occurs
  */
 export const createUserHandle = async (userId: string, handle: string): Promise<boolean> => {
   if (!db) {
-    console.warn('Firestore not initialized, cannot create user handle');
-    return false;
+    const error: AppError = {
+      code: ErrorCodes.FIRESTORE_NOT_INITIALIZED,
+      message: 'Service is not available. Please check your connection.',
+      recoverable: true,
+      category: 'FIRESTORE',
+      retryable: true,
+    };
+    throw error;
   }
 
   if (!handle || handle.trim() === '') {
-    console.warn('Handle cannot be empty');
-    return false;
+    const error: AppError = {
+      code: ErrorCodes.VALIDATION_MISSING_FIELD,
+      message: 'Handle cannot be empty.',
+      recoverable: true,
+      category: 'VALIDATION',
+      retryable: false,
+    };
+    throw error;
   }
 
   const trimmedHandle = handle.trim();
 
   const isAvailable = await isHandleAvailable(trimmedHandle, userId);
   if (!isAvailable) {
-    throw new Error('This handle is already taken. Please choose another one.');
+    const error: AppError = {
+      code: ErrorCodes.VALIDATION_HANDLE_TAKEN,
+      message: 'This handle is already taken. Please choose another one.',
+      recoverable: true,
+      category: 'VALIDATION',
+      retryable: false,
+    };
+    throw error;
   }
 
-  try {
-    const userRef = doc(db, 'users', userId);
-    const userSnap = await getDoc(userRef);
-    
-    const now = Date.now();
-    const userData: UserHandleDocument = {
-      userId,
-      handle: trimmedHandle,
-      updatedAt: now,
-    };
-    
-    if (!userSnap.exists()) {
-      userData.createdAt = now;
-    }
+  const result = await withRetry(
+    async () => {
+      const userRef = doc(db, 'users', userId);
+      const userSnap = await getDoc(userRef);
+      
+      const now = Date.now();
+      const userData: UserHandleDocument = {
+        userId,
+        handle: trimmedHandle,
+        updatedAt: now,
+      };
+      
+      if (!userSnap.exists()) {
+        userData.createdAt = now;
+      }
 
-    await setDoc(userRef, userData, { merge: true });
-    return true;
-  } catch (error) {
-    console.error('Error creating user handle:', error);
-    if (error instanceof Error && error.message.includes('already taken')) {
-      throw error;
+      await setDoc(userRef, userData, { merge: true });
+      return true;
+    },
+    {
+      maxRetries: 3,
+      context: 'createUserHandle',
     }
-    return false;
+  );
+
+  if (result.success) {
+    return result.data;
+  } else {
+    // Re-throw as AppError for UI handling
+    throw result.error;
   }
 };
 

@@ -39,6 +39,8 @@ import { useGameState } from '../hooks/useGameState';
 import { useCupManagement } from '../hooks/useCupManagement';
 import { DesignSystem } from '../theme';
 import { formatTime } from '../utils/timeFormatter';
+import { useErrorNotification } from '../contexts/ErrorNotificationContext';
+import { isOfflineError } from '../utils/errorHandler';
 
 interface GameScreenProps {
   navigation: GameScreenNavigationProp;
@@ -47,6 +49,7 @@ interface GameScreenProps {
 
 const GameScreen: React.FC<GameScreenProps> = ({ navigation, route }) => {
   const theme = useTheme();
+  const { showError, showInfo } = useErrorNotification();
   const { cupCount, team1Players, team2Players, gameType } = route.params;
   
   const [matchId, setMatchId] = useState<string | null>(null);
@@ -102,6 +105,9 @@ const GameScreen: React.FC<GameScreenProps> = ({ navigation, route }) => {
       );
       if (newMatchId) {
         setMatchId(newMatchId);
+      } else {
+        // Graceful degradation: game continues without saving
+        showInfo('Game started in offline mode. Your progress will be saved when connection is restored.');
       }
     };
 
@@ -250,19 +256,23 @@ const GameScreen: React.FC<GameScreenProps> = ({ navigation, route }) => {
           if (success) {
             setMatchCompleted(true);
             matchCompletedRef.current = true;
+          } else {
+            // Graceful degradation: match completed locally
+            showInfo('Match completed! Results will be saved when connection is restored.');
           }
         })
         .catch(error => {
           console.error('Failed to complete match:', error);
+          showError('Failed to save match results. The game completed successfully.');
         });
     }
   };
 
   const handleSurrender = (surrenderingTeam: TeamId) => {
     if (!matchId) {
-      console.warn('Cannot surrender without a matchId');
-      setSurrenderDialogVisible(false);
-      return;
+      // Graceful degradation: can still surrender even without matchId
+      console.warn('Cannot save surrender without a matchId (offline mode)');
+      // Continue with surrender flow even without matchId
     }
 
     const totalCups = cupCount;
@@ -304,10 +314,14 @@ const GameScreen: React.FC<GameScreenProps> = ({ navigation, route }) => {
         if (success) {
           setMatchCompleted(true);
           matchCompletedRef.current = true;
+        } else {
+          // Graceful degradation: match completed locally
+          showInfo('Match completed! Results will be saved when connection is restored.');
         }
       })
       .catch(error => {
         console.error('Failed to complete match on surrender:', error);
+        showError('Failed to save match results. The game completed successfully.');
       });
 
     setSurrenderDialogVisible(false);

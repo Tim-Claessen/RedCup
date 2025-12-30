@@ -24,6 +24,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LoginScreenNavigationProp } from '../types/navigation';
 import { useAuth } from '../contexts/AuthContext';
 import { DesignSystem } from '../theme';
+import { useErrorNotification } from '../contexts/ErrorNotificationContext';
+import { AppError } from '../types/errors';
 
 interface LoginScreenProps {
   navigation: LoginScreenNavigationProp;
@@ -32,6 +34,7 @@ interface LoginScreenProps {
 const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
   const theme = useTheme();
   const { signInAnonymously, signInWithEmail, signUpWithEmail, setHandle, user, resetPassword, signOut } = useAuth();
+  const { showError, showSuccess } = useErrorNotification();
   
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
@@ -63,8 +66,9 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
       await signInAnonymously();
       setNeedsHandle(true);
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to sign in as guest';
+      const errorMessage = err instanceof AppError ? err.message : (err instanceof Error ? err.message : 'Failed to sign in as guest');
       setError(errorMessage);
+      showError(err instanceof AppError ? err : errorMessage);
     } finally {
       setLoading(false);
     }
@@ -72,7 +76,9 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
 
   const handleEmailAuth = async () => {
     if (!email || !password) {
-      setError('Please enter both email and password');
+      const errorMsg = 'Please enter both email and password';
+      setError(errorMsg);
+      showError(errorMsg);
       return;
     }
 
@@ -85,8 +91,9 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
         await signInWithEmail(email, password);
       }
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : `Failed to ${isSignUp ? 'sign up' : 'sign in'}`;
+      const errorMessage = err instanceof AppError ? err.message : (err instanceof Error ? err.message : `Failed to ${isSignUp ? 'sign up' : 'sign in'}`);
       setError(errorMessage);
+      showError(err instanceof AppError ? err : errorMessage);
       setLoading(false);
     }
     // Don't set loading to false here - let the auth state change handle it
@@ -96,23 +103,31 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
   const handleSetHandle = async () => {
     const trimmedHandle = handle.trim();
     if (!trimmedHandle) {
-      setError('Please enter a handle');
+      const errorMsg = 'Please enter a handle';
+      setError(errorMsg);
+      showError(errorMsg);
       return;
     }
 
     if (trimmedHandle.length < 2) {
-      setError('Handle must be at least 2 characters long');
+      const errorMsg = 'Handle must be at least 2 characters long';
+      setError(errorMsg);
+      showError(errorMsg);
       return;
     }
 
     if (trimmedHandle.length > 20) {
-      setError('Handle must be 20 characters or less');
+      const errorMsg = 'Handle must be 20 characters or less';
+      setError(errorMsg);
+      showError(errorMsg);
       return;
     }
 
     // Validation: alphanumeric, underscores, and hyphens only (no spaces or special chars)
     if (!/^[a-zA-Z0-9_-]+$/.test(trimmedHandle)) {
-      setError('Handle can only contain letters, numbers, underscores, and hyphens');
+      const errorMsg = 'Handle can only contain letters, numbers, underscores, and hyphens';
+      setError(errorMsg);
+      showError(errorMsg);
       return;
     }
 
@@ -120,16 +135,20 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
     setError(null);
     try {
       await setHandle(trimmedHandle);
+      showSuccess('Handle created successfully!');
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to set handle';
+      const errorMessage = err instanceof AppError ? err.message : (err instanceof Error ? err.message : 'Failed to set handle');
       setError(errorMessage);
+      showError(err instanceof AppError ? err : errorMessage);
       setLoading(false);
     }
   };
 
   const handleForgotPassword = async () => {
     if (!email || email.trim() === '') {
-      setError('Please enter your email address');
+      const errorMsg = 'Please enter your email address';
+      setError(errorMsg);
+      showError(errorMsg);
       return;
     }
 
@@ -138,9 +157,11 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
     try {
       await resetPassword(email.trim());
       setResetEmailSent(true);
+      showSuccess('Password reset email sent! Check your inbox.');
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to send password reset email';
+      const errorMessage = err instanceof AppError ? err.message : (err instanceof Error ? err.message : 'Failed to send password reset email');
       setError(errorMessage);
+      showError(err instanceof AppError ? err : errorMessage);
     } finally {
       setLoading(false);
     }

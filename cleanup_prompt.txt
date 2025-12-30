@@ -6,7 +6,8 @@ Review the codebase and ensure it follows CODING_STANDARDS.md:
 4. **Best practices**: Remove `as` assertions, fix useEffect deps, remove debug console.log, extract repeated logic
 5. **Cleanup**: Remove commented code, unused imports, trailing blank lines
 6. **Branding**: Make sure any newly added UI components are in line with the branding guidelines.
+7. **README**: The README file is concise and up to date
 
-**Output**: Summary of changes, files modified, and recommendations for future work.
+**Output**: Summary of changes, files modified.
 
 **Rules**: Preserve all functionality. Prioritize consistency.

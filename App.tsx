@@ -15,6 +15,8 @@ import { PaperProvider } from 'react-native-paper';
 import { RedCupTheme } from './src/theme';
 import { RootStackParamList } from './src/types/navigation';
 import { AuthProvider, useAuth } from './src/contexts/AuthContext';
+import { ErrorNotificationProvider } from './src/contexts/ErrorNotificationContext';
+import { ErrorBoundary } from './src/components/common/ErrorBoundary';
 import LoginScreen from './src/screens/LoginScreen';
 import HomeScreen from './src/screens/HomeScreen';
 import QuickGameSetupScreen from './src/screens/QuickGameSetupScreen';
@@ -61,10 +63,14 @@ function AppNavigator() {
 
 export default function App() {
   return (
-    <PaperProvider theme={RedCupTheme}>
-      <AuthProvider>
-        <AppNavigator />
-      </AuthProvider>
-    </PaperProvider>
+    <ErrorBoundary>
+      <PaperProvider theme={RedCupTheme}>
+        <ErrorNotificationProvider>
+          <AuthProvider>
+            <AppNavigator />
+          </AuthProvider>
+        </ErrorNotificationProvider>
+      </PaperProvider>
+    </ErrorBoundary>
   );
 }

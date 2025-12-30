@@ -24,6 +24,18 @@ import {
 } from 'firebase/firestore';
 import { db } from './firebase';
 import { GameEvent, GameType, CupCount, Player } from '../types/game';
+import { 
+  handleFirebaseError, 
+  withRetry, 
+  withErrorHandling, 
+  isOfflineError,
+  logError,
+  Result,
+  success,
+  failure,
+  ErrorCodes
+} from '../utils/errorHandler';
+import { AppError } from '../types/errors';
 
 export interface MatchDocument {
   // Document ID is matchId (not stored as field)
@@ -66,7 +78,7 @@ export interface MadeShotDocument {
 
 /**
  * Creates a new match document in Firestore
- * Returns the match ID
+ * Returns the match ID, or null if offline/error (graceful degradation)
  */
 export const createMatch = async (
   gameType: GameType,
@@ -75,57 +87,71 @@ export const createMatch = async (
   team2Players: Player[]
 ): Promise<string | null> => {
   if (!db) {
-    console.warn('Firestore not initialized, match not saved');
-    return null;
+    console.warn('Firestore not initialized, match not saved (offline mode)');
+    return null; // Graceful degradation - game can continue without saving
   }
 
-  try {
-    const matchId = `match_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    
-    // Build participants array with side assignment
-    // Normalize all guest/temporary players (no userId) to 'Guest' handle
-    const participants = [
-      ...team1Players.map(p => {
-        const participant: { handle: string; side: 0; userId?: string } = {
-          handle: p.userId ? p.handle : 'Guest', // Normalize guests to 'Guest'
-          side: 0 as const, // team1 = side 0
-        };
-        // Only include userId if it exists (omit undefined to avoid Firestore error)
-        if (p.userId) {
-          participant.userId = p.userId;
-        }
-        return participant;
-      }),
-      ...team2Players.map(p => {
-        const participant: { handle: string; side: 1; userId?: string } = {
-          handle: p.userId ? p.handle : 'Guest', // Normalize guests to 'Guest'
-          side: 1 as const, // team2 = side 1
-        };
-        // Only include userId if it exists (omit undefined to avoid Firestore error)
-        if (p.userId) {
-          participant.userId = p.userId;
-        }
-        return participant;
-      }),
-    ];
-    
-    const matchData: MatchDocument = {
-      tournamentId: null,
-      rulesConfig: {
-        cupCount,
-        gameType,
-      },
-      participants,
-      startedAt: serverTimestamp(),
-      completed: false,
-    };
+  const result = await withRetry(
+    async () => {
+      const matchId = `match_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      
+      // Build participants array with side assignment
+      // Normalize all guest/temporary players (no userId) to 'Guest' handle
+      const participants = [
+        ...team1Players.map(p => {
+          const participant: { handle: string; side: 0; userId?: string } = {
+            handle: p.userId ? p.handle : 'Guest', // Normalize guests to 'Guest'
+            side: 0 as const, // team1 = side 0
+          };
+          // Only include userId if it exists (omit undefined to avoid Firestore error)
+          if (p.userId) {
+            participant.userId = p.userId;
+          }
+          return participant;
+        }),
+        ...team2Players.map(p => {
+          const participant: { handle: string; side: 1; userId?: string } = {
+            handle: p.userId ? p.handle : 'Guest', // Normalize guests to 'Guest'
+            side: 1 as const, // team2 = side 1
+          };
+          // Only include userId if it exists (omit undefined to avoid Firestore error)
+          if (p.userId) {
+            participant.userId = p.userId;
+          }
+          return participant;
+        }),
+      ];
+      
+      const matchData: MatchDocument = {
+        tournamentId: null,
+        rulesConfig: {
+          cupCount,
+          gameType,
+        },
+        participants,
+        startedAt: serverTimestamp(),
+        completed: false,
+      };
 
-    const matchRef = doc(db, 'matches', matchId);
-    await setDoc(matchRef, matchData);
+      const matchRef = doc(db, 'matches', matchId);
+      await setDoc(matchRef, matchData);
 
-    return matchId;
-  } catch (error) {
-    console.error('Error creating match:', error);
+      return matchId;
+    },
+    {
+      maxRetries: 3,
+      context: 'createMatch',
+    }
+  );
+
+  if (result.success) {
+    return result.data;
+  } else {
+    // Graceful degradation: log error but allow game to continue
+    logError(result.error, 'createMatch');
+    if (isOfflineError(result.error.originalError)) {
+      console.warn('Offline: Match not saved, but game can continue');
+    }
     return null;
   }
 };
@@ -138,14 +164,16 @@ export const createMatch = async (
  * - Uses eventId as document ID for direct lookup
  * - Removes gameState to reduce storage (can be reconstructed)
  * - Aligns with desired data model from README
+ * 
+ * Returns false on error (graceful degradation - game continues)
  */
 export const saveGameEvent = async (
   matchId: string,
   event: GameEvent
 ): Promise<boolean> => {
   if (!db) {
-    console.warn('Firestore not initialized, event not saved');
-    return false;
+    console.warn('Firestore not initialized, event not saved (offline mode)');
+    return false; // Graceful degradation
   }
 
   if (!matchId) {
@@ -153,47 +181,60 @@ export const saveGameEvent = async (
     return false;
   }
 
-  try {
-    const isRedemption = event.team1CupsRemaining === 0 || event.team2CupsRemaining === 0;
-    
-    // Normalize guest players (no userId) to 'Guest' handle
-    const playerHandle = event.userId ? (event.playerHandle || '') : 'Guest';
-    
-    // Build made shot document - conditionally include userId to avoid Firestore undefined error
-    const madeShotBase = {
-      shotId: event.eventId,
-      matchId,
-      playerHandle,
-      cupIndex: event.cupId,
-      timestamp: event.timestamp,
-      isBounce: event.isBounce,
-      isGrenade: event.isGrenade,
-      isRedemption,
-      isUndone: event.isUndone,
-      team1CupsRemaining: event.team1CupsRemaining,
-      team2CupsRemaining: event.team2CupsRemaining,
-    };
-    
-    // Conditionally add userId only if it exists (omit undefined to avoid Firestore error)
-    const madeShot: MadeShotDocument = event.userId
-      ? { ...madeShotBase, userId: event.userId }
-      : madeShotBase;
-    if (event.bounceGroupId !== undefined && event.bounceGroupId !== null) {
-      madeShot.bounceGroupId = event.bounceGroupId;
-    }
+  const result = await withRetry(
+    async () => {
+      const isRedemption = event.team1CupsRemaining === 0 || event.team2CupsRemaining === 0;
+      
+      // Normalize guest players (no userId) to 'Guest' handle
+      const playerHandle = event.userId ? (event.playerHandle || '') : 'Guest';
+      
+      // Build made shot document - conditionally include userId to avoid Firestore undefined error
+      const madeShotBase = {
+        shotId: event.eventId,
+        matchId,
+        playerHandle,
+        cupIndex: event.cupId,
+        timestamp: event.timestamp,
+        isBounce: event.isBounce,
+        isGrenade: event.isGrenade,
+        isRedemption,
+        isUndone: event.isUndone,
+        team1CupsRemaining: event.team1CupsRemaining,
+        team2CupsRemaining: event.team2CupsRemaining,
+      };
+      
+      // Conditionally add userId only if it exists (omit undefined to avoid Firestore error)
+      const madeShot: MadeShotDocument = event.userId
+        ? { ...madeShotBase, userId: event.userId }
+        : madeShotBase;
+      if (event.bounceGroupId !== undefined && event.bounceGroupId !== null) {
+        madeShot.bounceGroupId = event.bounceGroupId;
+      }
 
       if (event.grenadeGroupId !== undefined && event.grenadeGroupId !== null) {
         madeShot.grenadeGroupId = event.grenadeGroupId;
       }
 
-    const madeShotsRef = collection(db, 'made_shots');
-    const shotRef = doc(madeShotsRef, event.eventId);
-    await setDoc(shotRef, madeShot);
+      const madeShotsRef = collection(db, 'made_shots');
+      const shotRef = doc(madeShotsRef, event.eventId);
+      await setDoc(shotRef, madeShot);
 
-    return true;
-  } catch (error) {
-    console.error('Error saving made shot:', error);
-    console.error('Event details:', { eventId: event.eventId, matchId, cupId: event.cupId });
+      return true;
+    },
+    {
+      maxRetries: 2, // Fewer retries for individual events (less critical)
+      context: 'saveGameEvent',
+    }
+  );
+
+  if (result.success) {
+    return result.data;
+  } else {
+    // Graceful degradation: log error but don't block game
+    logError(result.error, 'saveGameEvent');
+    if (isOfflineError(result.error.originalError)) {
+      console.warn('Offline: Event not saved, but game continues');
+    }
     return false;
   }
 };
@@ -276,6 +317,8 @@ export const saveGameEvents = async (
  * Marks a match as completed
  * Updates match with end time, winning side, and final scores
  * Also updates user stats summaries (incrementally)
+ * 
+ * Returns false on error (graceful degradation)
  */
 export const completeMatch = async (
   matchId: string, 
@@ -284,57 +327,72 @@ export const completeMatch = async (
   team2Score: number
 ): Promise<boolean> => {
   if (!db) {
-    console.warn('Firestore not initialized, match completion not saved');
-    return false;
+    console.warn('Firestore not initialized, match completion not saved (offline mode)');
+    return false; // Graceful degradation
   }
 
-  try {
-    const matchRef = doc(db, 'matches', matchId);
-    
-    // Get match data first to calculate stats
-    const matchDoc = await getDoc(matchRef);
-    if (!matchDoc.exists()) {
-      console.error('Match not found:', matchId);
-      return false;
-    }
-    
-    const matchData = matchDoc.data() as MatchDocument;
-    
-    // Calculate match duration
-    const startedAt = matchData.startedAt;
-    const now = Date.now();
-    let durationSeconds = 0;
-    
-    if (startedAt) {
-      let startTime: number;
-      if (startedAt instanceof Timestamp) {
-        startTime = startedAt.toMillis();
-      } else if (typeof startedAt === 'number') {
-        startTime = startedAt;
-      } else {
-        // Fallback for server timestamp placeholder (should resolve in production)
-        startTime = now - 600000;
+  const result = await withRetry(
+    async () => {
+      const matchRef = doc(db, 'matches', matchId);
+      
+      // Get match data first to calculate stats
+      const matchDoc = await getDoc(matchRef);
+      if (!matchDoc.exists()) {
+        throw new Error(`Match not found: ${matchId}`);
       }
-      durationSeconds = Math.floor((now - startTime) / 1000);
+      
+      const matchData = matchDoc.data() as MatchDocument;
+      
+      // Calculate match duration
+      const startedAt = matchData.startedAt;
+      const now = Date.now();
+      let durationSeconds = 0;
+      
+      if (startedAt) {
+        let startTime: number;
+        if (startedAt instanceof Timestamp) {
+          startTime = startedAt.toMillis();
+        } else if (typeof startedAt === 'number') {
+          startTime = startedAt;
+        } else {
+          // Fallback for server timestamp placeholder (should resolve in production)
+          startTime = now - 600000;
+        }
+        durationSeconds = Math.floor((now - startTime) / 1000);
+      }
+      await updateDoc(matchRef, {
+        completed: true,
+        endedAt: serverTimestamp(),
+        durationSeconds,
+        winningSide,
+        team1Score,
+        team2Score,
+      });
+
+      const matchDataWithDuration = { ...matchData, completed: true, durationSeconds };
+      
+      // Update stats asynchronously (non-blocking)
+      updateUserStatsForCompletedMatch(matchId, matchDataWithDuration, winningSide).catch(err => {
+        const appError = handleFirebaseError(err);
+        logError(appError, 'updateUserStatsForCompletedMatch');
+      });
+
+      return true;
+    },
+    {
+      maxRetries: 3,
+      context: 'completeMatch',
     }
-    await updateDoc(matchRef, {
-      completed: true,
-      endedAt: serverTimestamp(),
-      durationSeconds,
-      winningSide,
-      team1Score,
-      team2Score,
-    });
+  );
 
-    const matchDataWithDuration = { ...matchData, completed: true, durationSeconds };
-    
-    updateUserStatsForCompletedMatch(matchId, matchDataWithDuration, winningSide).catch(err => {
-      console.error('Error updating user stats (non-blocking):', err);
-    });
-
-    return true;
-  } catch (error) {
-    console.error('Error completing match:', error);
+  if (result.success) {
+    return result.data;
+  } else {
+    // Graceful degradation: log error but don't block UI
+    logError(result.error, 'completeMatch');
+    if (isOfflineError(result.error.originalError)) {
+      console.warn('Offline: Match completion not saved, but game finished');
+    }
     return false;
   }
 };
@@ -580,27 +638,42 @@ const updatePartnerStats = async (
  * Updates a made shot's isUndone flag (for undo functionality)
  * 
  * OPTIMIZED: Uses eventId as document ID for direct lookup (no query needed)
+ * Returns false on error (graceful degradation)
  */
 export const markEventAsUndone = async (
   eventId: string
 ): Promise<boolean> => {
   if (!db) {
-    console.warn('Firestore not initialized, undo not saved');
-    return false;
+    console.warn('Firestore not initialized, undo not saved (offline mode)');
+    return false; // Graceful degradation
   }
 
-  try {
-    // Direct lookup using eventId as document ID (much faster than query)
-    const madeShotsRef = collection(db, 'made_shots');
-    const shotRef = doc(madeShotsRef, eventId);
-    
-    await updateDoc(shotRef, {
-      isUndone: true,
-    });
+  const result = await withRetry(
+    async () => {
+      // Direct lookup using eventId as document ID (much faster than query)
+      const madeShotsRef = collection(db, 'made_shots');
+      const shotRef = doc(madeShotsRef, eventId);
+      
+      await updateDoc(shotRef, {
+        isUndone: true,
+      });
 
-    return true;
-  } catch (error) {
-    console.error('Error marking made shot as undone:', error);
+      return true;
+    },
+    {
+      maxRetries: 2,
+      context: 'markEventAsUndone',
+    }
+  );
+
+  if (result.success) {
+    return result.data;
+  } else {
+    // Graceful degradation: log error but allow undo to work locally
+    logError(result.error, 'markEventAsUndone');
+    if (isOfflineError(result.error.originalError)) {
+      console.warn('Offline: Undo not saved to server, but works locally');
+    }
     return false;
   }
 };

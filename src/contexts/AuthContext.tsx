@@ -17,6 +17,8 @@ import {
 } from 'firebase/auth';
 import { auth } from '../services/firebase';
 import { getUserHandle, createUserHandle } from '../services/userService';
+import { handleFirebaseError, logError, createError } from '../utils/errorHandler';
+import { AppError, ErrorCodes } from '../types/errors';
 
 export interface AuthUser {
   uid: string;
@@ -80,43 +82,145 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, []);
 
   const signInAnonymouslyHandler = async () => {
-    if (!auth) throw new Error('Firebase Auth not initialized');
-    await signInAnonymously(auth);
+    if (!auth) {
+      throw createError(
+        ErrorCodes.AUTH_NOT_INITIALIZED,
+        'Authentication service is not available. Please check your connection.',
+        {
+          recoverable: true,
+          category: 'AUTH',
+          retryable: true,
+        }
+      );
+    }
+    try {
+      await signInAnonymously(auth);
+    } catch (error) {
+      const appError = handleFirebaseError(error);
+      logError(appError, 'signInAnonymously');
+      throw appError;
+    }
   };
 
   const signInWithEmailHandler = async (email: string, password: string) => {
-    if (!auth) throw new Error('Firebase Auth not initialized');
-    await signInWithEmailAndPassword(auth, email, password);
+    if (!auth) {
+      throw createError(
+        ErrorCodes.AUTH_NOT_INITIALIZED,
+        'Authentication service is not available. Please check your connection.',
+        {
+          recoverable: true,
+          category: 'AUTH',
+          retryable: true,
+        }
+      );
+    }
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+    } catch (error) {
+      const appError = handleFirebaseError(error);
+      logError(appError, 'signInWithEmail');
+      throw appError;
+    }
   };
 
   const signUpWithEmailHandler = async (email: string, password: string) => {
-    if (!auth) throw new Error('Firebase Auth not initialized');
-    await createUserWithEmailAndPassword(auth, email, password);
+    if (!auth) {
+      throw createError(
+        ErrorCodes.AUTH_NOT_INITIALIZED,
+        'Authentication service is not available. Please check your connection.',
+        {
+          recoverable: true,
+          category: 'AUTH',
+          retryable: true,
+        }
+      );
+    }
+    try {
+      await createUserWithEmailAndPassword(auth, email, password);
+    } catch (error) {
+      const appError = handleFirebaseError(error);
+      logError(appError, 'signUpWithEmail');
+      throw appError;
+    }
   };
 
   const signOutHandler = async () => {
-    if (!auth) throw new Error('Firebase Auth not initialized');
-    await firebaseSignOut(auth);
-    setUser(null);
+    if (!auth) {
+      throw createError(
+        ErrorCodes.AUTH_NOT_INITIALIZED,
+        'Authentication service is not available.',
+        {
+          recoverable: true,
+          category: 'AUTH',
+          retryable: false,
+        }
+      );
+    }
+    try {
+      await firebaseSignOut(auth);
+      setUser(null);
+    } catch (error) {
+      const appError = handleFirebaseError(error);
+      logError(appError, 'signOut');
+      throw appError;
+    }
   };
 
   const setHandleHandler = async (handle: string) => {
-    if (!user) throw new Error('No user signed in');
-    const success = await createUserHandle(user.uid, handle);
-    if (success) {
+    if (!user) {
+      throw createError(
+        ErrorCodes.AUTH_USER_NOT_FOUND,
+        'No user signed in. Please sign in first.',
+        {
+          recoverable: true,
+          category: 'AUTH',
+          retryable: false,
+        }
+      );
+    }
+    try {
+      await createUserHandle(user.uid, handle);
       setUser({ ...user, handle });
-    } else {
-      // If success is false but no error was thrown, it's a general failure
-      throw new Error('Failed to create user handle');
+    } catch (error) {
+      if (error instanceof Error && 'code' in error) {
+        throw error;
+      }
+      const appError = handleFirebaseError(error);
+      logError(appError, 'setHandle');
+      throw appError;
     }
   };
 
   const resetPasswordHandler = async (email: string) => {
-    if (!auth) throw new Error('Firebase Auth not initialized');
-    if (!email || email.trim() === '') {
-      throw new Error('Email is required');
+    if (!auth) {
+      throw createError(
+        ErrorCodes.AUTH_NOT_INITIALIZED,
+        'Authentication service is not available. Please check your connection.',
+        {
+          recoverable: true,
+          category: 'AUTH',
+          retryable: true,
+        }
+      );
     }
-    await sendPasswordResetEmail(auth, email.trim());
+    if (!email || email.trim() === '') {
+      throw createError(
+        ErrorCodes.VALIDATION_MISSING_FIELD,
+        'Email is required.',
+        {
+          recoverable: true,
+          category: 'VALIDATION',
+          retryable: false,
+        }
+      );
+    }
+    try {
+      await sendPasswordResetEmail(auth, email.trim());
+    } catch (error) {
+      const appError = handleFirebaseError(error);
+      logError(appError, 'resetPassword');
+      throw appError;
+    }
   };
 
   const value: AuthContextType = {

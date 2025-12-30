@@ -188,6 +188,12 @@ After setup, the app will open in Expo Go or your simulator. Navigate through:
 - **Custom Hooks**: Business logic separated into reusable hooks (`useCupManagement`, `useGameState`, `useGameTimer`)
 - **Type Safety**: Full TypeScript coverage with strict type checking (no `any` types, proper type definitions)
 - **Material Design 3**: Consistent UI via React Native Paper theme system
+- **Error Handling**: Structured error system with retry logic, graceful degradation, and user-friendly notifications
+  - Centralized error types with unique codes (`ErrorCodes`) for testing
+  - Exponential backoff retry for transient failures
+  - Offline support with graceful degradation
+  - Error boundaries prevent app crashes
+  - TODO: Integrate Firebase Crashlytics for production error tracking
 - **Code Quality**: Codebase follows [`CODING_STANDARDS.md`](./CODING_STANDARDS.md) for consistency and maintainability
 
 ### Development Documentation
@@ -284,7 +290,7 @@ The app uses an event-sourcing architecture where:
 
 ## ⚠️ Known Limitations
 
-- **No Offline Mode**: Requires Firebase connection for data persistence
+- **Offline Mode**: App continues functioning when offline, but data persistence requires Firebase connection (graceful degradation implemented)
 - **No Tournament Support**: Only ad-hoc games supported (tournament mode pending)
 - **Web Limitations**: Some native features may not work in web build
 
