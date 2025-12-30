@@ -1,8 +1,7 @@
 // Jest setup file - runs before each test file
 import '@testing-library/jest-native/extend-expect';
 
-// Mock React Native modules
-jest.mock('react-native/Libraries/Animated/NativeAnimatedHelper');
+// Mock React Native modules (jest-expo handles most of this, but we can add specific mocks if needed)
 
 // Mock Expo modules
 jest.mock('expo-status-bar', () => ({

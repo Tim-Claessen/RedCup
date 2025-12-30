@@ -13,6 +13,7 @@ module.exports = {
   ],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
+    '^react-native/Libraries/Animated/NativeAnimatedHelper$': '<rootDir>/jest-mocks/NativeAnimatedHelper.js',
+    '^\\.\\./\\.\\./\\.secure/firebase\\.config$': '<rootDir>/jest-mocks/firebase.config.js',
   },
-  testEnvironment: 'node',
 };

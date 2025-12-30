@@ -11,10 +11,11 @@ import { renderHook, act } from '@testing-library/react-native';
 import { useCupManagement } from '../../../src/hooks/useCupManagement';
 import { useGameState } from '../../../src/hooks/useGameState';
 import { Player, GameType, CupCount } from '../../../src/types/game';
+import { mockFirestore } from '../../__mocks__/firebase';
 
 // Mock Firestore
 jest.mock('../../../src/services/firebase', () => ({
-  db: require('../../__mocks__/firebase').mockFirestore,
+  db: mockFirestore,
 }));
 
 jest.mock('../../../src/services/firestoreService', () => ({

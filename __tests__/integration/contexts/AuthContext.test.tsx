@@ -11,12 +11,12 @@ import React from 'react';
 import { renderHook, waitFor } from '@testing-library/react-native';
 import { AuthProvider, useAuth } from '../../../src/contexts/AuthContext';
 import { createUserHandle, getUserHandle } from '../../../src/services/userService';
-import { mockAuth } from '../../__mocks__/firebase';
+import { mockAuth, mockFirestore } from '../../__mocks__/firebase';
 
 // Mock Firebase
 jest.mock('../../../src/services/firebase', () => ({
   auth: mockAuth,
-  db: require('../../__mocks__/firebase').mockFirestore,
+  db: mockFirestore,
 }));
 
 // Mock userService

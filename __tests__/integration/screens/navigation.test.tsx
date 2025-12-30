@@ -16,10 +16,12 @@ import { RootStackParamList } from '../../../src/types/navigation';
 // Mock navigation
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
+import { mockAuth, mockFirestore } from '../../__mocks__/firebase';
+
 // Mock Firebase
 jest.mock('../../../src/services/firebase', () => ({
-  db: require('../../__mocks__/firebase').mockFirestore,
-  auth: require('../../__mocks__/firebase').mockAuth,
+  db: mockFirestore,
+  auth: mockAuth,
 }));
 
 jest.mock('../../../src/services/firestoreService', () => ({
