@@ -44,9 +44,9 @@ High-level test checklist for SINK releases. Complete this registry for each tes
 | AUTO-AUTH-IT-02 | AuthContext + userService handle retrieval | Data integrity: Handle retrieval must work with authentication state | Both | IT | Automated | Med | [ ] |
 | **CORE GAME LOGIC** | | | | | | | |
 | AUTO-GAME-E2E-01 | Regular shot recording | Speed-of-play: Core game mechanic must be fast and accurate | Both | E2E | Automated | High | [ ] |
-| AUTO-GAME-UT-01 | Bounce shot grouping | Analytics integrity: Bounce shots must be grouped correctly for stats | Both | UT | Automated | High | [ ] |
-| AUTO-GAME-UT-02 | Grenade shot adjacency detection | Analytics integrity: Grenade must sink target + all touching cups correctly | Both | UT | Automated | High | [ ] |
-| AUTO-GAME-UT-03 | Victory detection (last cup) | Game flow: Must detect win condition correctly | Both | UT | Automated | High | [ ] |
+| AUTO-GAME-UT-01 | Bounce shot grouping | Analytics integrity: Bounce shots must be grouped correctly for stats | Both | UT | Automated | High | [x] |
+| AUTO-GAME-UT-02 | Grenade shot adjacency detection | Analytics integrity: Grenade must sink target + all touching cups correctly | Both | UT | Automated | High | [x] |
+| AUTO-GAME-UT-03 | Victory detection (last cup) | Game flow: Must detect win condition correctly | Both | UT | Automated | High | [x] |
 | AUTO-GAME-UT-04 | Victory detection (bounce on second-to-last) | Game rules: Bounce on second-to-last cup triggers victory | Both | UT | Automated | High | [ ] |
 | AUTO-GAME-UT-05 | Redemption flow - Play On (regular shot) | Game rules: Redemption must restore all cups from last shot | Both | UT | Automated | High | [ ] |
 | AUTO-GAME-UT-06 | Redemption flow - Play On (bounce shot) | Game rules: Bounce redemption restores only trigger cup, second stays sunk | Both | UT | Automated | High | [ ] |
@@ -72,8 +72,8 @@ High-level test checklist for SINK releases. Complete this registry for each tes
 | AUTO-DATA-UT-02 | Event persistence to made_shots | Analytics integrity: Every shot must be saved to Firestore | Both | UT | Automated | High | [ ] |
 | AUTO-DATA-UT-03 | Event ID uniqueness (UUID) | Data integrity: UUID prevents collisions and enables direct lookup | Both | UT | Automated | High | [ ] |
 | AUTO-DATA-UT-04 | Soft-delete pattern (isUndone) | Analytics integrity: Undone events must be marked, not deleted (preserves history) | Both | UT | Automated | High | [ ] |
-| AUTO-DATA-UT-05 | Bounce group ID linking | Analytics integrity: Bounce events must share bounceGroupId for coordinated undo | Both | UT | Automated | High | [ ] |
-| AUTO-DATA-UT-06 | Grenade group ID linking | Analytics integrity: Grenade events must share grenadeGroupId for coordinated undo | Both | UT | Automated | High | [ ] |
+| AUTO-DATA-UT-05 | Bounce group ID linking | Analytics integrity: Bounce events must share bounceGroupId for coordinated undo | Both | UT | Automated | High | [x] |
+| AUTO-DATA-UT-06 | Grenade group ID linking | Analytics integrity: Grenade events must share grenadeGroupId for coordinated undo | Both | UT | Automated | High | [x] |
 | AUTO-DATA-UT-07 | Match completion with scores | Analytics integrity: Completed matches must have correct team scores | Both | UT | Automated | High | [ ] |
 | AUTO-DATA-UT-08 | User stats increment (overall) | Analytics integrity: User stats must increment correctly after match completion | Both | UT | Automated | High | [ ] |
 | AUTO-DATA-UT-09 | User stats increment (by game type) | Analytics integrity: Stats must be tracked separately for 1v1 vs 2v2 | Both | UT | Automated | Med | [ ] |

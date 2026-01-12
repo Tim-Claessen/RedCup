@@ -129,6 +129,13 @@ RedCup/
 ├── package.json                    # Dependencies and scripts
 ├── tsconfig.json                   # TypeScript configuration
 ├── dev_workbook.md                 # Development planning and progress tracking
+├── jest.config.js                  # Jest test configuration
+├── jest.setup.js                   # Jest test environment setup
+├── __tests__/                     # Test files
+│   └── unit/                      # Unit tests
+│       ├── hooks/                 # Hook tests
+│       ├── types/                 # Data structure tests
+│       └── utils/                 # Utility function tests
 └── documentation/                 # Project documentation
     ├── branding/                  # Brand guidelines
     ├── coding/                    # Coding standards
@@ -178,6 +185,7 @@ After setup, the app will open in Expo Go or your simulator. Navigate through:
 - `npm run android` - Open on Android device/emulator
 - `npm run ios` - Open on iOS simulator
 - `npm run web` - Open in web browser
+- `npm test` - Run all unit tests
 
 ### Development Workflow
 
@@ -200,12 +208,40 @@ After setup, the app will open in Expo Go or your simulator. Navigate through:
   - TODO: Integrate Firebase Crashlytics for production error tracking
 - **Code Quality**: Codebase follows [`documentation/coding/CODING_STANDARDS.md`](./documentation/coding/CODING_STANDARDS.md) for consistency and maintainability
 
+### Testing
+
+The project uses Jest with TypeScript support for unit testing. Tests are organized to mirror the source code structure.
+
+**Test Structure:**
+```
+__tests__/
+└── unit/
+    ├── hooks/     # Hook tests (useCupManagement, etc.)
+    ├── types/     # Data structure tests (GameEvent, etc.)
+    └── utils/     # Utility function tests (cupAdjacency, etc.)
+```
+
+**Test Naming:**
+Test files follow the naming convention from `TEST_REGISTRY.md`: `AUTO-{STAGE}-{TYPE}-{NUM}.test.ts`
+
+**Running Tests:**
+- `npm test` - Run all tests
+- `npm test -- --watch` - Run in watch mode
+- `npm test -- --coverage` - Run with coverage report
+- `npm test -- --verbose` - Run with detailed output
+
+**Test Coverage:**
+See [`documentation/testing/TEST_REGISTRY.md`](./documentation/testing/TEST_REGISTRY.md) for a complete registry of all tests, including test IDs, criticality, and implementation status.
+
+For detailed testing documentation, see [`documentation/testing/README.md`](./documentation/testing/README.md).
+
 ### Development Documentation
 
 For detailed development information, see:
 
 - **[`dev_workbook.md`](./dev_workbook.md)** - Development planning, code review findings, refactoring progress, and TODO tracking
 - **[`documentation/coding/CODING_STANDARDS.md`](./documentation/coding/CODING_STANDARDS.md)** - Code style guide, naming conventions, and best practices
+- **[`documentation/testing/README.md`](./documentation/testing/README.md)** - Testing setup, guidelines, and test structure
 
 These documents provide comprehensive guidance for contributing to the project.
 
