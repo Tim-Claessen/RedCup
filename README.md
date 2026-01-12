@@ -239,7 +239,6 @@ For detailed testing documentation, see [`documentation/testing/README.md`](./do
 
 For detailed development information, see:
 
-- **[`dev_workbook.md`](./dev_workbook.md)** - Development planning, code review findings, refactoring progress, and TODO tracking
 - **[`documentation/coding/CODING_STANDARDS.md`](./documentation/coding/CODING_STANDARDS.md)** - Code style guide, naming conventions, and best practices
 - **[`documentation/testing/README.md`](./documentation/testing/README.md)** - Testing setup, guidelines, and test structure
 
